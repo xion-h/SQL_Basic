@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL 기본 마스터 - 데이터 논리의 완성</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <!-- Google Fonts: Pretendard -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <style>
+        body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; }
+        code { font-family: 'Consolas', 'Monaco', monospace; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .active-step-shadow { box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.15); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 leading-relaxed overflow-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const containerRef = useRef(null);
+            useEffect(() => {
+                if (containerRef.current && window.lucide && lucide.icons[name]) {
+                    const iconNode = lucide.icons[name];
+                    const svg = lucide.createElement(iconNode);
+                    svg.setAttribute('width', size);
+                    svg.setAttribute('height', size);
+                    svg.setAttribute('class', `lucide lucide-${name} ${className}`);
+                    svg.setAttribute('stroke-width', '2');
+                    svg.setAttribute('stroke', 'currentColor');
+                    svg.setAttribute('fill', 'none');
+                    containerRef.current.innerHTML = '';
+                    containerRef.current.appendChild(svg);
+                }
+            }, [name, size, className]);
+            return <span ref={containerRef} className="inline-flex items-center justify-center"></span>;
+        };
+
+        const STEPS_DATA = [
+            {
+                step: 1,
+                title: "데이터 소스 정의: FROM & SELECT",
+                subtitle: "컴퓨터의 사고방식 이해하기",
+                theory: "SQL은 우리가 읽는 순서와 다르게 '어디서(FROM)' 데이터를 가져올지부터 결정한 뒤, '무엇을(SELECT)' 보여줄지 고민합니다. SELECT 절에서 수행하는 산술 연산이나 별칭(Alias) 부여는 가장 마지막 단계 중 하나임을 인지해야 합니다.",
+                checkpoint: "SELECT 절에서 만든 별칭을 동일한 SELECT 절의 다른 컬럼 연산에서 직접 참조할 수 없는 이유를 논리적으로 설명할 수 있어야 합니다.",
+                targetTable: "orders (주문 이력 테이블)",
+                goal: "2026년 주문 건에 대해 주문ID와 함께 부가세(10%)가 포함된 최종 금액 산출",
+                example: "SELECT \n  order_id,\n  price,\n  price * 1.1 AS price_with_vat\nFROM orders",
+                mockResult: [
+                    { order_id: 'ORD_001', price: 10000, price_with_vat: 11000 },
+                    { order_id: 'ORD_002', price: 25000, price_with_vat: 27500 }
+                ],
+                icons: "database"
+            },
+            {
+                step: 2,
+                title: "행 단위 필터링: WHERE",
+                subtitle: "분석 대상의 범위를 좁히는 기술",
+                theory: "WHERE 절은 데이터가 그룹화되거나 요약되기 '전'에 개별 행을 검사합니다. 특히 사내 DB 규격인 'YYYYMMDD' 형식의 날짜 데이터를 다룰 때, 문자열인지 숫자인지에 따른 부등호 연산 오류를 방지하는 것이 실무의 핵심입니다.",
+                checkpoint: "날짜 필터링 시 '20260101'과 '2026-01-01'의 차이를 데이터 타입 관점에서 구분하고 있는가? NULL 값을 가진 행이 필터링 조건에서 어떻게 누락되는지 파악하고 있는가?",
+                targetTable: "users (사용자 마스터 테이블)",
+                goal: "서울에 거주하며 2026년 3월 이후에 가입한 활성 상태의 유저 추출",
+                example: "SELECT user_id, name, join_date\nFROM users\nWHERE city = 'Seoul'\n  AND join_date >= 20260301\n  AND status = 'Active'",
+                mockResult: [
+                    { user_id: 'U102', name: '강민준', join_date: 20260315 },
+                    { user_id: 'U105', name: '이서윤', join_date: 20260401 }
+                ],
+                icons: "filter"
+            },
+            {
+                step: 3,
+                title: "데이터 요약과 그룹화: GROUP BY",
+                subtitle: "집합적 관점으로 데이터 바라보기",
+                theory: "개별 행의 상세 정보가 아닌, 집합의 특성(합계, 평균, 개수)을 파악합니다. GROUP BY 절에 명시되지 않은 일반 컬럼은 SELECT 절에 단독으로 올 수 없습니다. 이는 '하나의 요약 행에 여러 개의 원본 데이터가 대응될 수 없는' 논리적 모순 때문입니다.",
+                checkpoint: "평균(AVG) 계산 시 분모에 NULL 값이 포함되는지, COUNT(컬럼명)와 COUNT(*)의 결과가 왜 다른지 논리적으로 설명 가능한가?",
+                targetTable: "sales (매출 상세 테이블)",
+                goal: "각 지역별 총 매출액과 주문 건수를 집계하여 매출이 높은 순으로 정렬",
+                example: "SELECT \n  region,\n  COUNT(order_id) AS total_orders,\n  SUM(amount) AS total_sales\nFROM sales\nGROUP BY region\nORDER BY total_sales DESC",
+                mockResult: [
+                    { region: 'Seoul', total_orders: 1540, total_sales: 45000000 },
+                    { region: 'Busan', total_orders: 890, total_sales: 21000000 }
+                ],
+                icons: "layers"
+            },
+            {
+                step: 4,
+                title: "논리 분기와 변환: CASE & CAST",
+                subtitle: "데이터를 비즈니스 언어로 치환하기",
+                theory: "DB에 저장된 가공되지 않은 값을 비즈니스 로직(등급, 상태 등)으로 변환합니다. CAST는 데이터 타입을 강제로 변경하여 연산 가능하게 만들며, CASE WHEN은 다중 조건문을 처리합니다. 데이터 정제 과정에서 가장 많이 쓰이는 도구입니다.",
+                checkpoint: "CASE 절에서 ELSE를 생략했을 때 발생하는 기본값(NULL)이 전체 결과에 어떤 영향을 주는지 인지하고 있는가?",
+                targetTable: "members (회원 활동 테이블)",
+                goal: "누적 구매 금액에 따른 회원 등급 분류 및 가입일자 타입 변환",
+                example: "SELECT \n  member_id,\n  CAST(join_date AS STRING) AS join_date_str,\n  CASE \n    WHEN total_spend >= 1000000 THEN 'Platinum'\n    WHEN total_spend >= 500000 THEN 'Gold'\n    ELSE 'Silver'\n  END AS membership_level\nFROM members",
+                mockResult: [
+                    { member_id: 'M001', join_date_str: '20260110', membership_level: 'Platinum' },
+                    { member_id: 'M002', join_date_str: '20260215', membership_level: 'Silver' }
+                ],
+                icons: "wand-2"
+            },
+            {
+                step: 5,
+                title: "고급 분석과 최적화: QUALIFY",
+                subtitle: "서브쿼리를 줄이는 분석 함수의 힘",
+                theory: "BigQuery의 전매특허인 QUALIFY 절은 분석 함수(Window Function)의 결과를 서브쿼리 없이 즉시 필터링합니다. 이는 쿼리의 가독성을 획기적으로 높여주며, 특히 '최신 데이터 1건 추출'과 같은 중복 제거 로직에서 압도적인 효율을 보여줍니다.",
+                checkpoint: "PARTITION BY와 ORDER BY의 조합이 데이터를 어떻게 그룹 내에서 정렬하는지, QUALIFY가 실행 순서상 왜 SELECT 이후(정확히는 윈도우 계산 직후)인지 파악했는가?",
+                targetTable: "login_logs (로그인 기록 테이블)",
+                goal: "사용자별로 가장 최근에 로그인한 기록 딱 1건씩만 추출",
+                example: "SELECT * \nFROM login_logs\nWHERE device_type = 'Mobile'\nQUALIFY ROW_NUMBER() OVER(PARTITION BY user_id ORDER BY login_time DESC) = 1",
+                mockResult: [
+                    { user_id: 'U102', login_time: '2026-04-10 14:00', device_type: 'Mobile' },
+                    { user_id: 'U105', login_time: '2026-04-10 16:30', device_type: 'Mobile' }
+                ],
+                icons: "trending-up"
+            }
+        ];
+
+        const App = () => {
+            const [activeStep, setActiveStep] = useState(1);
+            const currentData = STEPS_DATA.find(item => item.step === activeStep);
+
+            return (
+                <div className="h-screen flex flex-col bg-slate-50">
+                    <nav className="flex-none bg-white border-b border-slate-200 z-50">
+                        <div className="max-w-full mx-auto px-6 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-blue-600 p-1.5 rounded-lg text-white">
+                                    <Icon name="terminal" size={20} />
+                                </div>
+                                <h1 className="text-xl font-black text-slate-900 tracking-tight">SQL 기본 마스터 <span className="text-blue-600 font-medium text-sm ml-1">2026</span></h1>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="hidden lg:flex flex-col items-end mr-4">
+                                    <span className="text-[10px] font-bold text-slate-400 leading-none">PRACTICE ENVIRONMENT</span>
+                                    <span className="text-xs font-bold text-slate-600">BigQuery Sandbox Project</span>
+                                </div>
+                                <button className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center gap-2">
+                                    <Icon name="key" size={14} />
+                                    샌드박스 계정 확인
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <div className="flex-grow flex overflow-hidden">
+                        <aside className="w-80 flex-none bg-white border-r border-slate-200 overflow-y-auto p-6 hidden md:block">
+                            <div className="mb-8 px-2">
+                                <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">학습 커리큘럼</h2>
+                                <p className="text-xs text-slate-500 font-medium leading-relaxed">각 단계는 이전 단계의 논리를 바탕으로 설계되었습니다.</p>
+                            </div>
+                            <nav className="space-y-2">
+                                {STEPS_DATA.map((item) => (
+                                    <button
+                                        key={item.step}
+                                        onClick={() => setActiveStep(item.step)}
+                                        className={`w-full flex items-center gap-4 p-4 rounded-2xl text-left transition-all group ${
+                                            activeStep === item.step 
+                                            ? 'bg-blue-600 text-white active-step-shadow translate-x-1' 
+                                            : 'bg-white text-slate-600 hover:bg-slate-50 hover:translate-x-1 border border-transparent'
+                                        }`}
+                                    >
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-none font-black text-xs ${
+                                            activeStep === item.step ? 'bg-white/20' : 'bg-slate-100'
+                                        }`}>
+                                            {item.step}
+                                        </div>
+                                        <div className="overflow-hidden">
+                                            <div className="text-sm font-bold truncate">{item.title}</div>
+                                            <div className={`text-[10px] truncate uppercase font-bold tracking-tighter ${activeStep === item.step ? 'text-blue-200' : 'text-slate-400'}`}>
+                                                LOGIC {item.step}
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </nav>
+
+                            <div className="mt-12 bg-blue-50/50 rounded-2xl p-5 border border-blue-100/50">
+                                <div className="flex items-center gap-2 text-blue-900 font-bold text-sm mb-2">
+                                    <Icon name="info" size={16} className="text-blue-600" />
+                                    <span>학습 가이드</span>
+                                </div>
+                                <p className="text-[11px] text-blue-800/70 leading-relaxed">상단의 '샌드박스 계정' 버튼을 눌러 발급된 계정으로 BigQuery에 접속하면 예제 데이터를 직접 조회해볼 수 있습니다.</p>
+                            </div>
+                        </aside>
+
+                        <main className="flex-grow overflow-y-auto bg-slate-50 p-6 lg:p-12 pb-40">
+                            <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-500">
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 text-blue-600 font-bold text-sm tracking-tighter uppercase">
+                                        <Icon name={currentData.icons} size={18} />
+                                        <span>Step {currentData.step} Logic</span>
+                                    </div>
+                                    <h2 className="text-3xl lg:text-4xl font-black text-slate-900 leading-tight">
+                                        {currentData.title}
+                                    </h2>
+                                    <p className="text-lg text-slate-500 font-medium italic">
+                                        "{currentData.subtitle}"
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-8">
+                                    {/* Theory & Checkpoint Section */}
+                                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 border border-slate-200 shadow-sm space-y-10">
+                                        <section>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+                                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">핵심 이론 및 실행 논리</h4>
+                                            </div>
+                                            <p className="text-slate-700 text-lg leading-relaxed font-medium">
+                                                {currentData.theory}
+                                            </p>
+                                        </section>
+
+                                        <section className="bg-slate-50 rounded-3xl p-6 lg:p-8 border border-slate-200 flex flex-col md:flex-row gap-6">
+                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm flex-none">
+                                                <Icon name="check-square" size={24} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <h5 className="font-black text-slate-900 text-lg leading-tight">
+                                                    논리 점검 (Logic Check)
+                                                </h5>
+                                                <p className="text-slate-600 text-base leading-relaxed">
+                                                    {currentData.checkpoint}
+                                                </p>
+                                            </div>
+                                        </section>
+                                    </div>
+
+                                    {/* Practical Implementation Section */}
+                                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 border border-slate-200 shadow-sm space-y-8">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">실무 구현 예시</h4>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            <div className="space-y-4">
+                                                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 h-full">
+                                                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Implementation Goal</h5>
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center gap-2 text-sm">
+                                                            <span className="text-slate-400 font-bold w-16">Table:</span>
+                                                            <code className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">{currentData.targetTable}</code>
+                                                        </div>
+                                                        <div className="flex items-start gap-2 text-sm leading-relaxed text-slate-700">
+                                                            <span className="text-slate-400 font-bold w-16 flex-none">Goal:</span>
+                                                            <span className="font-medium">{currentData.goal}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-slate-900 rounded-2xl p-6 text-blue-300 shadow-inner relative overflow-hidden h-full">
+                                                <div className="text-[10px] font-bold text-slate-500 mb-3 flex items-center justify-between">
+                                                    <span>SQL EDITOR</span>
+                                                    <Icon name="code" size={14} className="opacity-30" />
+                                                </div>
+                                                <pre className="text-sm font-mono leading-relaxed overflow-x-auto">
+                                                    <code>{currentData.example}</code>
+                                                </pre>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Icon name="table" size={12} />
+                                                Expected Output (Mock)
+                                            </h5>
+                                            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                                <table className="w-full text-sm text-left border-collapse">
+                                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                                        <tr>
+                                                            {Object.keys(currentData.mockResult[0]).map(key => (
+                                                                <th key={key} className="px-4 py-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider">{key}</th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {currentData.mockResult.map((row, idx) => (
+                                                            <tr key={idx} className="bg-white">
+                                                                {Object.values(row).map((val, i) => (
+                                                                    <td key={i} className="px-4 py-3 text-slate-700 font-mono text-xs">{val}</td>
+                                                                ))}
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-10">
+                                    <button 
+                                        onClick={() => setActiveStep(prev => Math.max(1, prev - 1))}
+                                        disabled={activeStep === 1}
+                                        className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all ${
+                                            activeStep === 1 ? 'opacity-30 cursor-not-allowed text-slate-300' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 shadow-sm'
+                                        }`}
+                                    >
+                                        <Icon name="chevron-left" size={18} />
+                                        이전 로직
+                                    </button>
+                                    
+                                    <div className="text-xs font-black text-slate-400 tracking-widest uppercase bg-white px-4 py-2 rounded-full border border-slate-100 shadow-sm">
+                                        {activeStep} / {STEPS_DATA.length}
+                                    </div>
+
+                                    <button 
+                                        onClick={() => setActiveStep(prev => Math.min(STEPS_DATA.length, prev + 1))}
+                                        disabled={activeStep === STEPS_DATA.length}
+                                        className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all ${
+                                            activeStep === STEPS_DATA.length ? 'opacity-30 cursor-not-allowed text-slate-300' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200'
+                                        }`}
+                                    >
+                                        다음 로직
+                                        <Icon name="chevron-right" size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
