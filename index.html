@@ -55,11 +55,11 @@
         const STEPS_DATA = [
             {
                 step: 1,
-                title: "데이터 꺼내기",
+                title: "데이터 기본 규칙",
                 grammar: "FROM & SELECT",
-                subtitle: "빅쿼리의 기본 규칙 이해하기",
-                theory: "SQL은 '어디서(FROM)' 가져올지 정하고 '무엇을(SELECT)' 보여줄지 결정합니다.\n\n[빅쿼리 기초 가이드]\n1. 문자열 : 반드시 작은따옴표(' ')로 감쌉니다. (예: '서울')\n2. 테이블/컬럼명 : 공백이나 특수문자가 있다면 백틱(` `)으로 감쌉니다.\n3. 마침표 : 쿼리의 끝에는 세미콜론(;)을 붙여 가독성을 높입니다.\n\nSELECT 컬럼1, 컬럼2 FROM `project.dataset.table`;",
-                checkpoint: "SELECT에서 부여한 AS(별명)는 동일한 SELECT 절 안의 다른 연산에서 참조할 수 없습니다. 컴퓨터는 아직 이름표가 붙기 전 단계에서 계산을 처리하기 때문입니다.",
+                subtitle: "빅쿼리의 표준 작성 형식 이해하기",
+                theory: "SQL은 데이터를 찾아낼 대상을 정하고(FROM), 그 안에서 출력할 항목을 선택(SELECT)하는 것으로 시작합니다.\n\n[사용 방법]\n- SELECT [컬럼명1], [컬럼명2] : 보고 싶은 데이터를 나열합니다.\n- FROM `프로젝트.데이터셋.테이블` : 데이터를 가져올 위치를 백틱(` `)으로 감싸 지정합니다.\n- AS [별칭] : 컬럼 이름이 복잡하거나 계산식인 경우 새로운 이름을 부여합니다.\n\n빅쿼리에서는 문자열 값은 반드시 작은따옴표(' ')로 감싸야 하며, 명령문의 끝에는 세미콜론(;)을 붙여 쿼리의 끝을 알립니다.",
+                checkpoint: "SELECT 절에서 만든 별칭(AS)은 실행 순서상 '가장 마지막'에 생성됩니다. 따라서 같은 줄에 있는 다른 연산에서 그 별칭을 바로 사용할 수 없음을 명심하세요.",
                 targetTable: "orders",
                 sourceData: {
                     "orders": [
@@ -82,9 +82,9 @@
                 step: 2,
                 title: "조건으로 거르기",
                 grammar: "WHERE",
-                subtitle: "따옴표 실수 주의하기!",
-                theory: "WHERE는 데이터를 한 줄씩 검사하여 필터링합니다.\n\n[빅쿼리 팁]\n문자열 조건에서 따옴표 짝이 맞지 않으면 'unrecognized token' 에러가 발생합니다. '서울' 처럼 앞뒤를 정확히 닫아주었는지 확인하세요.\n\nWHERE city = '서울' AND age >= 20;",
-                checkpoint: "데이터에 빈 값(NULL)이 있으면 일반 비교 연산으로는 찾을 수 없습니다. 반드시 'IS NULL' 또는 'IS NOT NULL' 조건을 사용하여 데이터 누락을 방지하세요.",
+                subtitle: "데이터 필터링과 논리 연산자",
+                theory: "WHERE 절을 사용하면 전체 데이터 중 특정 조건에 맞는 행(Row)만 골라낼 수 있습니다.\n\n[사용 방법]\n- WHERE [컬럼명] [연산자] [값] : 필터 조건을 작성합니다.\n- AND : 나열된 모든 조건이 참(True)이어야 할 때 사용합니다. (조건1 AND 조건2)\n- OR : 조건 중 하나라도 참이면 결과에 포함합니다.\n- IN (값1, 값2) : 여러 후보 값 중 하나라도 일치하면 추출합니다.\n- BETWEEN A AND B : A와 B 사이의 범위에 있는 값을 찾습니다.",
+                checkpoint: "데이터에 빈 값(NULL)이 포함된 경우, '=' 이나 '!=' 연산자로는 걸러지지 않습니다. 반드시 'IS NULL' 또는 'IS NOT NULL'을 사용하여 데이터 누락 가정을 확인하십시오.",
                 targetTable: "users",
                 sourceData: {
                     "users": [
@@ -94,7 +94,7 @@
                     ]
                 },
                 goal: "서울 거주자 중 2026년 2월 이후 가입자만 찾기",
-                logicDetail: "users 테이블에서 1) 거주지(city)가 '서울'이고 2) 가입일(join_date)이 20260201 이후인 데이터의 id와 도시명을 가져옵니다.",
+                logicDetail: "users 테이블에서 1) 거주지(city)가 '서울'이고(AND) 2) 가입일(join_date)이 20260201 이후인 데이터를 필터링하여 id와 도시명을 가져옵니다.",
                 example: "SELECT u_id, city, join_date\nFROM users\nWHERE city = '서울'\n  AND join_date >= 20260201;",
                 mockResult: [
                     { u_id: '3', city: '서울', join_date: 20260415 }
@@ -103,11 +103,11 @@
             },
             {
                 step: 3,
-                title: "데이터 요약하기",
+                title: "데이터 연산하기",
                 grammar: "COUNT, SUM, AVG",
-                subtitle: "숫자 데이터 요약",
-                theory: "빅쿼리에서 대량의 행을 요약하여 합계나 평균을 구합니다.\n\n- COUNT(컬럼): 해당 컬럼에 값이 있는 행의 수 (NULL 제외)\n- SUM(컬럼): 합계\n- AVG(컬럼): 평균\n\n결과는 항상 '단일 행'으로 요약됩니다.",
-                checkpoint: "AVG(평균) 계산 시 NULL 값은 분모에서 아예 제외됩니다. 전체 모수를 기준으로 평균을 내야 한다면 0으로 치환한 뒤 계산해야 함을 명심하세요.",
+                subtitle: "수치 데이터의 집계와 요약",
+                theory: "개별 행의 나열이 아니라 전체적인 수치 정보를 파악하고 싶을 때 집계 함수를 사용합니다.\n\n[핵심 함수 사용법]\n- COUNT([컬럼]) : 해당 항목의 개수를 셉니다. (*를 쓰면 전체 행 수를 셉니다)\n- SUM([컬럼]) : 숫자 데이터의 총합을 구합니다.\n- AVG([컬럼]) : 숫자 데이터의 산술 평균을 계산합니다.\n- MIN / MAX : 최솟값과 최댓값을 구합니다.",
+                checkpoint: "집계 함수는 기본적으로 NULL 값을 무시합니다. 특히 AVG 계산 시 NULL 값이 분모에서 빠지는 것을 인지하고 있는지, 0으로 처리해야 하지는 않는지 검증이 필요합니다.",
                 targetTable: "sales",
                 sourceData: {
                     "sales": [
@@ -117,7 +117,7 @@
                     ]
                 },
                 goal: "전체 주문 건수와 총 매출, 평균 매출액 구하기",
-                logicDetail: "sales 테이블에서 1) 전체 행의 개수(COUNT)와 2) 매출액(amt)의 총합(SUM), 3) 매출액의 평균(AVG)을 각각 계산하여 하나의 행으로 출력합니다.",
+                logicDetail: "sales 테이블에서 1) 전체 행의 개수(COUNT)와 2) 매출액(amt)의 총합(SUM), 3) 매출액의 평균(AVG)을 각각 계산하여 하나의 요약된 행으로 출력합니다.",
                 example: "SELECT \n  COUNT(*) AS total_cnt,\n  SUM(amt) AS total_sales,\n  AVG(amt) AS avg_sales\nFROM sales;",
                 mockResult: [
                     { total_cnt: 3, total_sales: 21000, avg_sales: 7000 }
@@ -126,11 +126,11 @@
             },
             {
                 step: 4,
-                title: "그룹화 및 필터링",
+                title: "그룹화 및 그룹 필터링",
                 grammar: "GROUP BY & HAVING",
-                subtitle: "기준별로 묶어서 결과 확인",
-                theory: "특정 기준(지역, 팀)으로 데이터를 묶습니다.\n\n[사용 방법]\nSELECT 지역, SUM(매출) \nFROM 테이블 \nGROUP BY 지역 \nHAVING SUM(매출) > 1000;\n\nHAVING은 묶인 결과물에 대해 조건을 거는 단계입니다.",
-                checkpoint: "SELECT 절에 집계 함수가 아닌 일반 컬럼이 있다면, 빅쿼리는 해당 컬럼을 반드시 GROUP BY 절에도 똑같이 적어줘야 에러가 나지 않습니다.",
+                subtitle: "기준별 데이터 묶기와 요약 결과 필터링",
+                theory: "데이터를 특정 기준(차원)으로 그룹을 지어 통계를 낼 때 사용합니다.\n\n[사용 방법]\n- GROUP BY [기준컬럼] : 데이터를 묶을 기준을 명시합니다. SELECT 절의 일반 컬럼은 모두 여기에 포함되어야 합니다.\n- HAVING [집계조건] : GROUP BY로 뭉쳐진 '결과값'에 조건을 걸 때 사용합니다.\n\nSELECT 지역, SUM(매출) FROM 테이블 GROUP BY 지역 HAVING SUM(매출) > 5000;",
+                checkpoint: "WHERE와 HAVING의 결정적 차이:\n- WHERE : 데이터를 뭉치기 전(Before) 개별 행을 필터링합니다.\n- HAVING : 데이터를 뭉친 후(After) 집계 결과(합계, 평균 등)를 필터링합니다.\n평균 매출액 1만 원 이상을 거르려면 무조건 HAVING을 써야 합니다.",
                 targetTable: "sales",
                 sourceData: {
                     "sales": [
@@ -140,7 +140,7 @@
                     ]
                 },
                 goal: "지역별 총 매출을 구하고, 합계가 1만 원 넘는 지역만 보기",
-                logicDetail: "sales 테이블에서 1) 지역(region)별로 데이터를 묶고 2) 각 지역의 합계(SUM)를 구한 뒤 3) 그 합이 10,000보다 큰 지역만 남깁니다.",
+                logicDetail: "sales 테이블에서 1) 지역(region)별로 데이터를 묶고 2) 각 지역의 합계(SUM)를 구한 뒤 3) 그 합이 10,000보다 큰 지역만 필터링(HAVING)합니다.",
                 example: "SELECT region, SUM(amt) AS total\nFROM sales\nGROUP BY region\nHAVING SUM(amt) > 10000;",
                 mockResult: [
                     { region: '서울', total: 12000 }
@@ -151,9 +151,9 @@
                 step: 5,
                 title: "형식 바꾸기",
                 grammar: "CAST",
-                subtitle: "빅쿼리 데이터 타입 변환",
-                theory: "데이터 그릇의 모양을 강제로 바꿉니다.\n\n- STRING: 문자형\n- INT64: 정수형 (빅쿼리 표준 숫자형)\n- DATE: 날짜형\n\nCAST('100' AS INT64) 처럼 써서 계산이 가능한 숫자로 변신시킵니다.",
-                checkpoint: "글자 '500'에 100을 더하면 빅쿼리는 에러를 출력합니다. 연산 전에는 반드시 CAST를 통해 숫자로 형변환이 되었는지 확인하세요.",
+                subtitle: "빅쿼리 데이터 타입의 강제 변환",
+                theory: "데이터가 저장된 형식(Type)을 강제로 변경하여 계산이나 결합이 가능하도록 만듭니다.\n\n[사용 방법]\n- CAST([데이터] AS [데이터형식])\n- STRING : 문자열 (텍스트 결합 시 유용)\n- INT64 : 정수 (산술 연산 시 유용)\n- DATE : 날짜 (날짜 연산 시 유용)\n\n예: CAST('20260401' AS INT64) -> 숫자로 변환되어 크기 비교 가능",
+                checkpoint: "문자열 '100'과 숫자 100은 연산 방식이 완전히 다릅니다. '100' + '100'은 에러가 나거나 문자가 이어 붙을 수 있으므로 연산 전 형변환을 반드시 거치세요.",
                 targetTable: "raw_data",
                 sourceData: {
                     "raw_data": [
@@ -163,7 +163,7 @@
                     ]
                 },
                 goal: "문자열 val을 숫자로 바꿔 500을 더하기",
-                logicDetail: "raw_data 테이블에서 1) 컬럼 id 와 2) val 을 숫자로 변환(CAST)한 값을 구한 후 500을 더한 calc_val을 출력합니다.",
+                logicDetail: "raw_data 테이블에서 1) 컬럼 id 와 2) 문자열 형식인 val 을 숫자(INT64)로 변환(CAST)한 후 500을 더해 계산값을 구합니다.",
                 example: "SELECT \n  id,\n  CAST(val AS INT64) + 500 AS calc_val\nFROM raw_data;",
                 mockResult: [
                     { id: '1', calc_val: 1000 },
@@ -176,9 +176,9 @@
                 step: 6,
                 title: "조건에 따라 나누기",
                 grammar: "CASE WHEN",
-                subtitle: "등급 및 분류 로직 적용",
-                theory: "비즈니스 기준에 따라 값을 분류합니다.\n\nCASE \n  WHEN 점수 >= 90 THEN 'A' \n  ELSE 'B' \nEND AS 등급;\n\n반드시 END로 닫아줘야 문장이 완성됩니다.",
-                checkpoint: "ELSE를 생략하면 조건에 해당하지 않는 모든 데이터는 NULL이 됩니다. 의도하지 않은 누락을 막기 위해 ELSE '기본값'을 적는 것이 안전합니다.",
+                subtitle: "쿼리 내 조건부 분기 로직 구현",
+                theory: "데이터의 값에 따라 다른 결과를 출력하고 싶을 때 사용하는 조건문입니다.\n\n[사용 방법]\nCASE \n  WHEN [조건1] THEN [결과1] \n  WHEN [조건2] THEN [결과2] \n  ELSE [그외결과] \nEND AS [새이름];\n\n여러 개의 WHEN을 사용하여 다중 조건을 설정할 수 있으며, 위에서부터 순차적으로 조건을 검사합니다.",
+                checkpoint: "ELSE 절은 생략 가능하지만, 생략할 경우 조건에 맞지 않는 모든 데이터는 자동으로 NULL 처리가 됩니다. 예상치 못한 결과 누락을 방지하기 위해 기본값(ELSE)을 설정하는 습관을 들이세요.",
                 targetTable: "points",
                 sourceData: {
                     "points": [
@@ -188,7 +188,7 @@
                     ]
                 },
                 goal: "100점 이상은 '상', 미만은 '하'로 등급 분류",
-                logicDetail: "points 테이블에서 1) 사용자 이름과 2) 포인트(pt)가 100 이상이면 '상', 그 외에는 '하'라는 별도의 등급 컬럼(pt_level)을 생성합니다.",
+                logicDetail: "points 테이블에서 1) 사용자 이름과 2) 포인트(pt)가 100 이상이면 '상', 그 외에는 '하'라는 별도의 비즈니스 등급(pt_level)을 생성합니다.",
                 example: "SELECT \n  user,\n  CASE \n    WHEN pt >= 100 THEN '상'\n    ELSE '하'\n  END AS pt_level\nFROM points;",
                 mockResult: [
                     { user: 'K', pt_level: '상' },
@@ -201,9 +201,9 @@
                 step: 7,
                 title: "테이블 합치기",
                 grammar: "JOIN",
-                subtitle: "자석처럼 데이터 이어 붙이기",
-                theory: "두 테이블을 공통 키(ID 등)를 기준으로 옆으로 붙입니다.\n\n- LEFT JOIN: 왼쪽(A) 데이터는 무조건 보존\n- ON: 어떤 컬럼을 기준으로 합칠지 정의\n\nSELECT a.*, b.이름 \nFROM A AS a \nLEFT JOIN B AS b ON a.id = b.id;",
-                checkpoint: "JOIN을 할 때 기준이 되는 키(ID)가 중복되어 있으면 행의 개수가 기하급수적으로 늘어날 수 있습니다(Fan-out). 데이터 정합성을 꼭 체크하세요.",
+                subtitle: "공통 키를 활용한 데이터 결합",
+                theory: "서로 다른 테이블에 흩어진 정보를 하나로 모읍니다. 공통된 연결 고리(ID 등)가 필요합니다.\n\n[사용 방법]\nSELECT a.컬럼, b.컬럼 \nFROM 테이블A AS a \nLEFT JOIN 테이블B AS b ON a.키 = b.키;\n\n- LEFT JOIN : 왼쪽 테이블 데이터를 유지하며 오른쪽 정보를 추가합니다.\n- INNER JOIN : 두 테이블 모두에 존재하는 데이터만 합칩니다.\n- ON : 결합 기준이 되는 컬럼을 지정합니다.",
+                checkpoint: "JOIN을 수행할 때 기준이 되는 키(ID)에 중복값이 있으면 결과 행이 예상보다 기하급수적으로 늘어날 수 있습니다. 결합 전 대상 테이블의 중복 여부를 먼저 의심하고 확인하세요.",
                 targetTable: "orders & users",
                 sourceData: {
                     "orders": [
@@ -218,7 +218,7 @@
                     ]
                 },
                 goal: "주문 정보에 고객 이름을 붙여서 출력",
-                logicDetail: "orders 테이블(a)을 기준으로 1) users 테이블(b)을 u_id가 일치하는 것끼리 왼쪽 조인(LEFT JOIN)하여 2) 주문번호와 사용자 이름을 출력합니다.",
+                logicDetail: "orders 테이블(a)을 기준으로 1) users 테이블(b)을 u_id가 일치하는 것끼리 왼쪽 결합하여 2) 주문번호와 해당 사용자의 이름을 한 줄에 보여줍니다.",
                 example: "SELECT a.o_id, b.name\nFROM orders a\nLEFT JOIN users b ON a.u_id = b.u_id;",
                 mockResult: [
                     { o_id: '1', name: '김철수' },
@@ -231,9 +231,9 @@
                 step: 8,
                 title: "단계별 구조화",
                 grammar: "WITH",
-                subtitle: "빅쿼리에서 강력 추천하는 가독성 기법",
-                theory: "복잡한 쿼리를 논리적인 단계로 쪼갭니다. 임시 테이블을 만드는 것과 같습니다.\n\nWITH summary AS (\n  SELECT id, SUM(amt) FROM 테이블 GROUP BY id\n)\nSELECT * FROM summary;",
-                checkpoint: "서브쿼리보다 WITH 문이 훨씬 읽기 쉽고 디버깅이 편합니다. 실무에서는 복잡한 로직을 WITH 문으로 쪼개서 작성하는 것을 원칙으로 하세요.",
+                subtitle: "가독성 향상을 위한 가상 임시 테이블",
+                theory: "복잡한 전체 과정을 논리적인 단계별 쿼리로 쪼개어 작성하는 기법입니다.\n\n[사용 방법]\nWITH [임시이름] AS (\n  SELECT ... FROM ...\n)\nSELECT ... FROM [임시이름];\n\n임시 테이블을 정의하여 위에서 아래로 흐르는 논리적인 쿼리 작성을 가능하게 합니다.",
+                checkpoint: "서브쿼리를 과도하게 중첩하여 사용하면 가독성이 떨어져 나중에 고치기 매우 힘들어집니다. 실무에서는 동료들을 배려하여 가급적 WITH 문을 활용해 쿼리를 구조화하십시오.",
                 targetTable: "daily_sales",
                 sourceData: {
                     "daily_sales": [
@@ -243,7 +243,7 @@
                     ]
                 },
                 goal: "날짜별 합계를 구한 후, 그 평균값 계산하기",
-                logicDetail: "1) 먼저 일별 합계를 계산한 daily_summary 임시 테이블을 정의하고, 2) 그 요약된 테이블을 조회하여 전체 평균(AVG)을 구합니다.",
+                logicDetail: "1) 먼저 daily_sales에서 날짜별 매출 합계를 구한 daily_summary 임시 테이블을 정의하고, 2) 이 결과로부터 전체 날짜의 평균(AVG)을 계산합니다.",
                 example: "WITH daily_summary AS (\n  SELECT dt, SUM(amt) AS day_total \n  FROM daily_sales \n  GROUP BY dt\n)\nSELECT AVG(day_total) AS total_avg \nFROM daily_summary;",
                 mockResult: [
                     { total_avg: 400 }
@@ -252,35 +252,11 @@
             },
             {
                 step: 9,
-                title: "쿼리 안에 쿼리 넣기",
-                grammar: "Subquery",
-                subtitle: "동적인 값을 조건으로 활용하기",
-                theory: "다른 쿼리의 결과를 조건(WHERE) 등에 바로 씁니다.\n\n괄호() 안의 쿼리가 먼저 실행되어 바깥 쿼리에 값을 전달합니다.",
-                checkpoint: "서브쿼리가 너무 깊어지면 유지보수가 매우 힘들어집니다. 2단계 이상의 중첩은 가급적 WITH 문으로 전환을 고려하세요.",
-                targetTable: "all_employees",
-                sourceData: {
-                    "all_employees": [
-                        { name: 'Kim', sal: 5000 },
-                        { name: 'Lee', sal: 3000 },
-                        { name: 'Park', sal: 7000 }
-                    ]
-                },
-                goal: "평균 급여보다 많이 받는 직원 찾기",
-                logicDetail: "1) 서브쿼리(괄호 안)를 통해 전체 직원 급여 평균을 구하고, 2) 그 값보다 큰 급여를 받는 직원의 이름을 필터링합니다.",
-                example: "SELECT name \nFROM all_employees \nWHERE sal > (SELECT AVG(sal) FROM all_employees);",
-                mockResult: [
-                    { name: 'Kim' },
-                    { name: 'Park' }
-                ],
-                icons: "box"
-            },
-            {
-                step: 10,
                 title: "중복 제거 및 순번",
                 grammar: "ROW_NUMBER & QUALIFY",
-                subtitle: "최신 데이터 1건 고르기",
-                theory: "데이터에 특정 기준에 따라 순위를 매깁니다. 빅쿼리의 QUALIFY는 서브쿼리 없이 순위를 즉시 필터링해주는 강력한 구문입니다.\n\nROW_NUMBER() OVER(PARTITION BY 유저 ORDER BY 시간 DESC)\nQUALIFY ROW_NUMBER() ... = 1;",
-                checkpoint: "순위를 매길 때 ORDER BY를 누락하면 결과가 무작위로 나옵니다. '가장 최근 데이터'를 원한다면 반드시 DESC(내림차순)를 명시하세요.",
+                subtitle: "행 간 순서 지정과 분석 조건 필터링",
+                theory: "데이터에 특정 기준(시간, 금액 등)으로 순위를 매깁니다. 빅쿼리의 QUALIFY는 이 순위를 즉시 필터링할 때 유용합니다.\n\n[사용 방법]\n- ROW_NUMBER() OVER(PARTITION BY [그룹] ORDER BY [정렬] DESC)\n- QUALIFY : 윈도우 함수(ROW_NUMBER 등)의 결과값에 직접 조건을 겁니다.\n\n유저별로 수많은 접속 로그가 있을 때 '가장 최근의 로그 1건'만 뽑을 때 필수적입니다.",
+                checkpoint: "순위를 매길 때 ORDER BY의 정렬 방향(ASC/DESC)을 누락하면 순서가 무작위로 정해집니다. '최신 데이터'가 1번이 되게 하려면 반드시 시간순 DESC 정렬인지 의심하고 확인하세요.",
                 targetTable: "login_log",
                 sourceData: {
                     "login_log": [
@@ -290,7 +266,7 @@
                     ]
                 },
                 goal: "유저별로 가장 마지막 방문 기록 1건씩 추출",
-                logicDetail: "login_log에서 1) 유저(user)별로 묶고 2) 시간(time)이 늦은 순(DESC)으로 순번을 매긴 뒤, 3) 1번인 최신 로그만 QUALIFY를 통해 남깁니다.",
+                logicDetail: "login_log 테이블에서 1) 유저(user)별로 묶고 2) 방문 시간(time)이 가장 늦은 순서로 번호를 매긴 뒤, 3) 그 번호가 1번인 최신 로그만 QUALIFY를 통해 남깁니다.",
                 example: "SELECT * \nFROM login_log\nQUALIFY ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) = 1;",
                 mockResult: [
                     { user: 'A', time: '11:00' },
@@ -326,7 +302,6 @@
             const [activeStep, setActiveStep] = useState(1);
             const currentData = STEPS_DATA.find(item => item.step === activeStep);
 
-            // 데이터 타입에 따른 정렬 클래스 반환 함수 (숫자 좌측, 문자 우측)
             const getAlignmentClass = (val) => {
                 if (typeof val === 'number') return 'text-left';
                 return 'text-right';
