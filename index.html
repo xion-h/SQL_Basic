@@ -25,6 +25,23 @@
         .content-scroll { scroll-behavior: smooth; }
         .text-balance { text-wrap: balance; }
         .break-keep { word-break: keep-all; }
+        
+        /* Venn Diagram Styles */
+        .venn-container { position: relative; width: 220px; height: 140px; margin: 0 auto; }
+        .venn-circle-base { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid #cbd5e1; background: #fff; transition: all 0.3s ease; z-index: 1; }
+        .venn-circle-a { left: 0; top: 10px; }
+        .venn-circle-b { right: 0; top: 10px; }
+        .join-active-fill { background-color: #3b82f6 !important; opacity: 0.6 !important; }
+        
+        /* Intersection clipping layer */
+        .venn-intersection { position: absolute; left: 50px; top: 10px; width: 70px; height: 120px; overflow: hidden; z-index: 2; }
+        .intersection-fill { position: absolute; left: -50px; width: 120px; height: 120px; border-radius: 50%; background-color: #3b82f6; opacity: 0; transition: opacity 0.3s ease; }
+        
+        /* Text Labels layer */
+        .venn-label { position: absolute; top: 0; width: 120px; height: 140px; display: flex; align-items: center; justify-content: center; z-index: 10; pointer-events: none; font-size: 12px; font-weight: 800; }
+        .label-a { left: 0; color: #1e40af; }
+        .label-b { right: 0; color: #64748b; }
+        .label-active-text { color: #ffffff !important; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 leading-relaxed overflow-hidden">
@@ -429,12 +446,12 @@
                                                             <Icon name="database" size={12} />
                                                             테이블명 : "{tableName}"
                                                         </h5>
-                                                        <div className="border border-slate-100 rounded-2xl overflow-x-auto bg-slate-50/50">
-                                                            <table className="min-w-full text-xs text-left">
+                                                        <div className="border border-slate-200 rounded-2xl overflow-x-auto bg-slate-50/50">
+                                                            <table className="min-w-full text-xs text-left border-collapse">
                                                                 <thead className="bg-slate-100 border-b border-slate-200">
                                                                     <tr>
                                                                         {Object.keys(rows[0]).map(k => (
-                                                                            <th key={k} className="px-4 py-3 font-bold text-slate-500 uppercase whitespace-nowrap text-center">{k}</th>
+                                                                            <th key={k} className="px-4 py-3 font-bold text-slate-500 uppercase whitespace-nowrap text-center border border-slate-200">{k}</th>
                                                                         ))}
                                                                     </tr>
                                                                 </thead>
@@ -442,7 +459,7 @@
                                                                     {rows.map((row, i) => (
                                                                         <tr key={i}>
                                                                             {Object.values(row).map((v, j) => (
-                                                                                <td key={j} className={`px-4 py-3 text-slate-600 whitespace-nowrap ${getAlignmentClass(v)}`}>{v}</td>
+                                                                                <td key={j} className={`px-4 py-3 text-slate-600 whitespace-nowrap border border-slate-200 ${getAlignmentClass(v)}`}>{v}</td>
                                                                             ))}
                                                                         </tr>
                                                                     ))}
@@ -500,7 +517,7 @@
                                                         <thead className="bg-slate-50 border-b border-slate-200">
                                                             <tr>
                                                                 {Object.keys(currentData.mockResult[0]).map(key => (
-                                                                    <th key={key} className="px-4 py-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider whitespace-nowrap text-center">{key}</th>
+                                                                    <th key={key} className="px-4 py-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider text-center border border-slate-200">{key}</th>
                                                                 ))}
                                                             </tr>
                                                         </thead>
@@ -508,7 +525,7 @@
                                                             {currentData.mockResult.map((row, idx) => (
                                                                 <tr key={idx} className="bg-white">
                                                                     {Object.values(row).map((val, i) => (
-                                                                        <td key={i} className={`px-4 py-3 text-slate-700 font-mono text-xs whitespace-nowrap ${getAlignmentClass(val)}`}>{val}</td>
+                                                                        <td key={i} className={`px-4 py-3 text-slate-700 font-mono text-xs whitespace-nowrap border border-slate-200 ${getAlignmentClass(val)}`}>{val}</td>
                                                                     ))}
                                                                 </tr>
                                                             ))}
