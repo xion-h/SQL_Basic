@@ -22,6 +22,18 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .active-step-shadow { box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.15); }
+        .content-scroll { scroll-behavior: smooth; }
+        .text-balance { text-wrap: balance; }
+        .break-keep { word-break: keep-all; }
+        
+        /* Venn Diagram Styles */
+        .venn-container { position: relative; width: 220px; height: 140px; margin: 0 auto; }
+        .venn-circle-base { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid #cbd5e1; background: #fff; transition: all 0.3s ease; }
+        .venn-circle-a { left: 0; top: 10px; }
+        .venn-circle-b { right: 0; top: 10px; }
+        .join-active-fill { background-color: #3b82f6 !important; opacity: 0.6 !important; }
+        .venn-intersection { position: absolute; left: 50px; top: 10px; width: 70px; height: 120px; overflow: hidden; z-index: 20; }
+        .intersection-fill { position: absolute; left: -50px; width: 120px; height: 120px; border-radius: 50%; background-color: #3b82f6; opacity: 0; transition: opacity 0.3s ease; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 leading-relaxed overflow-hidden">
@@ -52,80 +64,249 @@
         const STEPS_DATA = [
             {
                 step: 1,
-                title: "데이터 소스 정의: FROM & SELECT",
-                subtitle: "컴퓨터의 사고방식 이해하기",
-                theory: "SQL은 우리가 읽는 순서와 다르게 '어디서(FROM)' 데이터를 가져올지부터 결정한 뒤, '무엇을(SELECT)' 보여줄지 고민합니다. SELECT 절에서 수행하는 산술 연산이나 별칭(Alias) 부여는 가장 마지막 단계 중 하나임을 인지해야 합니다.",
-                checkpoint: "SELECT 절에서 만든 별칭을 동일한 SELECT 절의 다른 컬럼 연산에서 직접 참조할 수 없는 이유를 논리적으로 설명할 수 있어야 합니다.",
-                targetTable: "orders (주문 이력 테이블)",
-                goal: "2026년 주문 건에 대해 주문ID와 함께 부가세(10%)가 포함된 최종 금액 산출",
-                example: "SELECT \n  order_id,\n  price,\n  price * 1.1 AS price_with_vat\nFROM orders",
+                title: "데이터 꺼내기",
+                grammar: "FROM & SELECT",
+                subtitle: "데이터 바구니에서 필요한 것만 고르기",
+                theory: "SQL은 우리가 읽는 순서와 다르게 '어디서(FROM)' 데이터를 가져올지부터 결정한 뒤, '무엇을(SELECT)' 보여줄지 고민합니다.\n\n[사용 방법]\nSELECT 컬럼명1, 컬럼명2 FROM 테이블명;\n\nAS(별칭)를 사용하여 결과 화면의 이름을 예쁘게 지어줄 수 있습니다.",
+                checkpoint: "SELECT에서 정한 별명을 바로 옆 컬럼 계산에서 쓰면 에러가 납니다. 컴퓨터는 아직 이름표가 붙기 전 단계에서 계산을 시도하기 때문입니다.",
+                targetTable: "orders (주문 내역)",
+                sourceData: [
+                    { order_id: 'A1', price: 10000 },
+                    { order_id: 'A2', price: 20000 },
+                    { order_id: 'A3', price: 15000 }
+                ],
+                goal: "주문ID와 가격에 세금(10%)을 더한 값을 계산하세요.",
+                logicDetail: "orders 테이블에서 1) 주문ID(order_id) 컬럼과 2) 가격(price)에 1.1을 곱해 세금이 포함된 값을 구한 후 final_price라는 이름을 붙여 출력합니다.",
+                example: "SELECT \n  order_id,\n  price * 1.1 AS final_price\nFROM orders;",
                 mockResult: [
-                    { order_id: 'ORD_001', price: 10000, price_with_vat: 11000 },
-                    { order_id: 'ORD_002', price: 25000, price_with_vat: 27500 }
+                    { order_id: 'A1', final_price: 11000 },
+                    { order_id: 'A2', final_price: 22000 },
+                    { order_id: 'A3', final_price: 16500 }
                 ],
                 icons: "database"
             },
             {
                 step: 2,
-                title: "행 단위 필터링: WHERE",
-                subtitle: "분석 대상의 범위를 좁히는 기술",
-                theory: "WHERE 절은 데이터가 그룹화되거나 요약되기 '전'에 개별 행을 검사합니다. 특히 사내 DB 규격인 'YYYYMMDD' 형식의 날짜 데이터를 다룰 때, 문자열인지 숫자인지에 따른 부등호 연산 오류를 방지하는 것이 실무의 핵심입니다.",
-                checkpoint: "날짜 필터링 시 '20260101'과 '2026-01-01'의 차이를 데이터 타입 관점에서 구분하고 있는가? NULL 값을 가진 행이 필터링 조건에서 어떻게 누락되는지 파악하고 있는가?",
-                targetTable: "users (사용자 마스터 테이블)",
-                goal: "서울에 거주하며 2026년 3월 이후에 가입한 활성 상태의 유저 추출",
-                example: "SELECT user_id, name, join_date\nFROM users\nWHERE city = 'Seoul'\n  AND join_date >= 20260301\n  AND status = 'Active'",
+                title: "조건으로 거르기",
+                grammar: "WHERE",
+                subtitle: "필요 없는 데이터 입구 컷!",
+                theory: "WHERE는 데이터를 뭉치기 전에 한 줄씩 검사하는 필터입니다.\n\n[사용 방법]\nSELECT ... FROM ... WHERE [조건];\n\n문자열은 따옴표(' ')로 감싸고, 숫자는 그대로 씁니다. 날짜 형식이 '20260101' 형태라면 숫자 크기 비교 연산이 가능합니다.",
+                checkpoint: "데이터에 빈 값(NULL)이 섞여 있으면 일반 비교(=, !=)로는 찾아낼 수 없습니다. 반드시 'IS NULL' 또는 'IS NOT NULL'을 사용하세요.",
+                targetTable: "users (회원 목록)",
+                sourceData: [
+                    { u_id: '1', city: '서울', join_date: 20260101 },
+                    { u_id: '2', city: '부산', join_date: 20260301 },
+                    { u_id: '3', city: '서울', join_date: 20260415 }
+                ],
+                goal: "서울 거주자 중 2026년 2월 이후 가입자만 찾기",
+                logicDetail: "users 테이블에서 1) 거주지(city)가 '서울'이고 2) 가입일(join_date)이 20260201 이후인 데이터의 id와 도시명을 가져옵니다.",
+                example: "SELECT u_id, city, join_date\nFROM users\nWHERE city = '서울'\n  AND join_date >= 20260201;",
                 mockResult: [
-                    { user_id: 'U102', name: '강민준', join_date: 20260315 },
-                    { user_id: 'U105', name: '이서윤', join_date: 20260401 }
+                    { u_id: '3', city: '서울', join_date: 20260415 }
                 ],
                 icons: "filter"
             },
             {
                 step: 3,
-                title: "데이터 요약과 그룹화: GROUP BY",
-                subtitle: "집합적 관점으로 데이터 바라보기",
-                theory: "개별 행의 상세 정보가 아닌, 집합의 특성(합계, 평균, 개수)을 파악합니다. GROUP BY 절에 명시되지 않은 일반 컬럼은 SELECT 절에 단독으로 올 수 없습니다. 이는 '하나의 요약 행에 여러 개의 원본 데이터가 대응될 수 없는' 논리적 모순 때문입니다.",
-                checkpoint: "평균(AVG) 계산 시 분모에 NULL 값이 포함되는지, COUNT(컬럼명)와 COUNT(*)의 결과가 왜 다른지 논리적으로 설명 가능한가?",
-                targetTable: "sales (매출 상세 테이블)",
-                goal: "각 지역별 총 매출액과 주문 건수를 집계하여 매출이 높은 순으로 정렬",
-                example: "SELECT \n  region,\n  COUNT(order_id) AS total_orders,\n  SUM(amount) AS total_sales\nFROM sales\nGROUP BY region\nORDER BY total_sales DESC",
+                title: "데이터 요약하기",
+                grammar: "COUNT, SUM, AVG",
+                subtitle: "기본 연산 함수 마스터",
+                theory: "전체 데이터의 합계나 평균 등을 구합니다. 단일 행이 아닌 전체 범위를 요약하는 과정입니다.\n\n[사용 방법]\n- COUNT(*): 전체 데이터 행 수\n- SUM(컬럼): 해당 컬럼의 합계\n- AVG(컬럼): 해당 컬럼의 평균\n\nSELECT SUM(amt) FROM 테이블;",
+                checkpoint: "AVG(평균) 계산 시 NULL 값은 분모에서 제외됩니다. 0으로 채워서 평균을 낼지, 제외할지 비즈니스 로직을 명확히 해야 합니다.",
+                targetTable: "sales (매출 내역)",
+                sourceData: [
+                    { sale_id: 'S1', amt: 5000 },
+                    { sale_id: 'S2', amt: 6000 },
+                    { sale_id: 'S3', amt: 10000 }
+                ],
+                goal: "전체 주문 건수와 총 매출, 평균 매출액 구하기",
+                logicDetail: "sales 테이블에서 1) 전체 행의 개수(COUNT)와 2) 매출액(amt)의 총합(SUM), 3) 매출액의 평균(AVG)을 각각 계산하여 하나의 행으로 출력합니다.",
+                example: "SELECT \n  COUNT(*) AS total_cnt,\n  SUM(amt) AS total_sales,\n  AVG(amt) AS avg_sales\nFROM sales;",
                 mockResult: [
-                    { region: 'Seoul', total_orders: 1540, total_sales: 45000000 },
-                    { region: 'Busan', total_orders: 890, total_sales: 21000000 }
+                    { total_cnt: 3, total_sales: 21000, avg_sales: 7000 }
+                ],
+                icons: "plus-circle"
+            },
+            {
+                step: 4,
+                title: "그룹화 및 필터링",
+                grammar: "GROUP BY & HAVING",
+                subtitle: "끼리끼리 뭉쳐서 거르기",
+                theory: "데이터를 그룹으로 묶은 후, 그 결과값에 조건을 겁니다.\n\n[사용 방법]\nSELECT 기준, SUM(값) FROM ... GROUP BY 기준 HAVING SUM(값) > 100;\n\nWHERE는 뭉치기 전 필터, HAVING은 뭉친 결과물에 대한 필터입니다.",
+                checkpoint: "SELECT 절에 집계 함수(SUM 등)가 아닌 컬럼이 있다면, 그 컬럼은 반드시 GROUP BY 절에도 똑같이 적어줘야 에러가 나지 않습니다.",
+                targetTable: "sales (지역별 매출)",
+                sourceData: [
+                    { region: '서울', amt: 5000 },
+                    { region: '서울', amt: 7000 },
+                    { region: '부산', amt: 3000 }
+                ],
+                goal: "지역별 총 매출을 구하고, 합계가 1만 원 넘는 지역만 보기",
+                logicDetail: "sales 테이블에서 1) 지역(region)별로 데이터를 묶고 2) 각 지역의 합계(SUM)를 구한 뒤 3) 그 합이 10,000보다 큰 서울 지역만 남깁니다.",
+                example: "SELECT region, SUM(amt) AS total\nFROM sales\nGROUP BY region\nHAVING SUM(amt) > 10000;",
+                mockResult: [
+                    { region: '서울', total: 12000 }
                 ],
                 icons: "layers"
             },
             {
-                step: 4,
-                title: "논리 분기와 변환: CASE & CAST",
-                subtitle: "데이터를 비즈니스 언어로 치환하기",
-                theory: "DB에 저장된 가공되지 않은 값을 비즈니스 로직(등급, 상태 등)으로 변환합니다. CAST는 데이터 타입을 강제로 변경하여 연산 가능하게 만들며, CASE WHEN은 다중 조건문을 처리합니다. 데이터 정제 과정에서 가장 많이 쓰이는 도구입니다.",
-                checkpoint: "CASE 절에서 ELSE를 생략했을 때 발생하는 기본값(NULL)이 전체 결과에 어떤 영향을 주는지 인지하고 있는가?",
-                targetTable: "members (회원 활동 테이블)",
-                goal: "누적 구매 금액에 따른 회원 등급 분류 및 가입일자 타입 변환",
-                example: "SELECT \n  member_id,\n  CAST(join_date AS STRING) AS join_date_str,\n  CASE \n    WHEN total_spend >= 1000000 THEN 'Platinum'\n    WHEN total_spend >= 500000 THEN 'Gold'\n    ELSE 'Silver'\n  END AS membership_level\nFROM members",
-                mockResult: [
-                    { member_id: 'M001', join_date_str: '20260110', membership_level: 'Platinum' },
-                    { member_id: 'M002', join_date_str: '20260215', membership_level: 'Silver' }
+                step: 5,
+                title: "데이터 형식 바꾸기",
+                grammar: "CAST",
+                subtitle: "숫자를 문자로, 문자를 숫자로",
+                theory: "데이터 그릇의 모양을 강제로 바꿉니다. 숫자가 문자로 저장되어 있으면 더하기 연산이 불가능하기 때문입니다.\n\n[사용 방법]\nCAST(컬럼 AS INT64) -> 숫자로\nCAST(컬럼 AS STRING) -> 문자로",
+                checkpoint: "글자 '500'에 100을 더하면 에러가 나거나 '500100'이 될 수 있습니다. 연산 전에는 반드시 숫자로 형변환이 되었는지 확인하세요.",
+                targetTable: "raw_data (미가공 데이터)",
+                sourceData: [
+                    { id: '1', val: '500' },
+                    { id: '2', val: '300' },
+                    { id: '3', val: '1000' }
                 ],
-                icons: "wand-2"
+                goal: "문자열 val을 숫자로 바꿔 500을 더하기",
+                logicDetail: "raw_data 테이블에서 1) 컬럼 id 와 2) val 을 숫자로 변환(CAST)한 값을 구한 후 500을 더한 calc_val을 출력합니다.",
+                example: "SELECT \n  id,\n  CAST(val AS INT64) + 500 AS calc_val\nFROM raw_data;",
+                mockResult: [
+                    { id: '1', calc_val: 1000 },
+                    { id: '2', calc_val: 800 },
+                    { id: '3', calc_val: 1500 }
+                ],
+                icons: "refresh-cw"
             },
             {
-                step: 5,
-                title: "고급 분석과 최적화: QUALIFY",
-                subtitle: "서브쿼리를 줄이는 분석 함수의 힘",
-                theory: "BigQuery의 전매특허인 QUALIFY 절은 분석 함수(Window Function)의 결과를 서브쿼리 없이 즉시 필터링합니다. 이는 쿼리의 가독성을 획기적으로 높여주며, 특히 '최신 데이터 1건 추출'과 같은 중복 제거 로직에서 압도적인 효율을 보여줍니다.",
-                checkpoint: "PARTITION BY와 ORDER BY의 조합이 데이터를 어떻게 그룹 내에서 정렬하는지, QUALIFY가 실행 순서상 왜 SELECT 이후(정확히는 윈도우 계산 직후)인지 파악했는가?",
-                targetTable: "login_logs (로그인 기록 테이블)",
-                goal: "사용자별로 가장 최근에 로그인한 기록 딱 1건씩만 추출",
-                example: "SELECT * \nFROM login_logs\nWHERE device_type = 'Mobile'\nQUALIFY ROW_NUMBER() OVER(PARTITION BY user_id ORDER BY login_time DESC) = 1",
-                mockResult: [
-                    { user_id: 'U102', login_time: '2026-04-10 14:00', device_type: 'Mobile' },
-                    { user_id: 'U105', login_time: '2026-04-10 16:30', device_type: 'Mobile' }
+                step: 6,
+                title: "조건에 따라 나누기",
+                grammar: "CASE WHEN",
+                subtitle: "데이터 등급 매기기",
+                theory: "비즈니스 조건에 따라 값을 분류합니다.\n\n[사용 방법]\nCASE WHEN 조건 THEN 결과 ELSE 그외 END AS 이름;\n\n복잡한 'If-Else' 로직을 쿼리 한 줄로 구현할 수 있습니다.",
+                checkpoint: "ELSE를 생략하면 조건에 해당하지 않는 데이터는 모두 NULL이 됩니다. '그 외'를 뜻하는 ELSE를 적어주는 방어적 코딩이 중요합니다.",
+                targetTable: "points (회원 포인트)",
+                sourceData: [
+                    { user: 'K', pt: 150 },
+                    { user: 'L', pt: 50 },
+                    { user: 'M', pt: 100 }
                 ],
-                icons: "trending-up"
+                goal: "100점 이상은 '상', 미만은 '하'로 등급 분류",
+                logicDetail: "points 테이블에서 1) 사용자 이름과 2) 포인트(pt)가 100 이상이면 '상', 그 외에는 '하'라는 별도의 등급 컬럼(pt_level)을 생성합니다.",
+                example: "SELECT \n  user,\n  CASE \n    WHEN pt >= 100 THEN '상'\n    ELSE '하'\n  END AS pt_level\nFROM points;",
+                mockResult: [
+                    { user: 'K', pt_level: '상' },
+                    { user: 'L', pt_level: '하' },
+                    { user: 'M', pt_level: '상' }
+                ],
+                icons: "split"
+            },
+            {
+                step: 7,
+                title: "테이블 합치기",
+                grammar: "JOIN",
+                subtitle: "자석처럼 데이터 이어 붙이기",
+                theory: "두 테이블을 공통 키(ID 등)를 기준으로 옆으로 붙입니다.\n\n- LEFT JOIN: 왼쪽(A) 데이터는 무조건 보존\n- INNER JOIN: 양쪽 모두에 데이터가 있는 것만 남김",
+                checkpoint: "JOIN 후에 데이터가 갑자기 늘어났다면(뻥튀기), 오른쪽 테이블에 동일한 키 값이 여러 개 중복되어 있는지 의심해봐야 합니다.",
+                targetTable: "orders & users (회원-주문)",
+                sourceData: [
+                    { o_id: '1', u_id: 'A' },
+                    { o_id: '2', u_id: 'B' },
+                    { u_id: 'A', name: '김철수' }
+                ],
+                goal: "주문 정보에 고객 이름을 붙여서 출력",
+                logicDetail: "orders 테이블(a)을 기준으로 1) users 테이블(b)을 u_id가 일치하는 것끼리 왼쪽 조인하여 2) 주문번호와 사용자 이름을 나란히 출력합니다.",
+                example: "SELECT a.o_id, b.name\nFROM orders a\nLEFT JOIN users b ON a.u_id = b.u_id;",
+                mockResult: [
+                    { o_id: '1', name: '김철수' },
+                    { o_id: '2', name: 'NULL' }
+                ],
+                icons: "link",
+                visualType: "join_left"
+            },
+            {
+                step: 8,
+                title: "쿼리 구조화하기",
+                grammar: "WITH",
+                subtitle: "단계별로 깔끔하게 정리하기",
+                theory: "긴 쿼리를 임시 테이블로 쪼개어 가독성을 높입니다.\n\n[사용 방법]\nWITH 임시테이블명 AS (쿼리)\nSELECT ... FROM 임시테이블명;",
+                checkpoint: "서브쿼리보다 WITH 문이 훨씬 읽기 쉽습니다. 실무에서는 동료들을 위해 복잡한 로직을 WITH 문으로 쪼개서 작성하세요.",
+                targetTable: "daily_sales (일별 매출)",
+                sourceData: [
+                    { dt: '2026-01-01', amt: 100 },
+                    { dt: '2026-01-01', amt: 200 },
+                    { dt: '2026-01-02', amt: 500 }
+                ],
+                goal: "날짜별 합계를 구한 후, 그 평균값 계산하기",
+                logicDetail: "1) 먼저 일별 합계를 계산한 daily_summary 임시 테이블을 정의하고, 2) 그 요약된 테이블을 조회하여 전체 평균(AVG)을 구합니다.",
+                example: "WITH daily_summary AS (\n  SELECT dt, SUM(amt) AS day_total \n  FROM daily_sales \n  GROUP BY dt\n)\nSELECT AVG(day_total) AS total_avg \nFROM daily_summary;",
+                mockResult: [
+                    { total_avg: 400 }
+                ],
+                icons: "layout"
+            },
+            {
+                step: 9,
+                title: "쿼리 안에 쿼리 넣기",
+                grammar: "Subquery",
+                subtitle: "동적인 값을 조건으로 활용하기",
+                theory: "다른 쿼리의 결과를 조건(WHERE) 등에 바로 씁니다.\n\n괄호() 안의 쿼리가 먼저 실행되어 바깥 쿼리에 값을 전달합니다.",
+                checkpoint: "서브쿼리가 너무 깊어지면 유지보수가 매우 힘들어집니다. 2단계 이상의 중첩은 가급적 WITH 문으로 전환을 고려하세요.",
+                targetTable: "all_employees (직원 목록)",
+                sourceData: [
+                    { name: 'Kim', sal: 5000 },
+                    { name: 'Lee', sal: 3000 },
+                    { name: 'Park', sal: 7000 }
+                ],
+                goal: "평균 급여보다 많이 받는 직원 찾기",
+                logicDetail: "1) 서브쿼리(괄호 안)를 통해 전체 직원 급여 평균을 구하고, 2) 그 값보다 큰 급여를 받는 직원의 이름을 필터링합니다.",
+                example: "SELECT name \nFROM all_employees \nWHERE sal > (SELECT AVG(sal) FROM all_employees);",
+                mockResult: [
+                    { name: 'Kim' },
+                    { name: 'Park' }
+                ],
+                icons: "box"
+            },
+            {
+                step: 10,
+                title: "데이터에 순서 정하기",
+                grammar: "ROW_NUMBER",
+                subtitle: "중복 중 최신 데이터 1건 고르기",
+                theory: "특정 기준에 따라 데이터에 1, 2, 3... 번호를 매깁니다.\n\n- PARTITION BY: 누구별로 번호를 매길 것인가\n- ORDER BY: 어떤 순서로 1등을 줄 것인가",
+                checkpoint: "중복 제거용으로 쓸 때, ORDER BY 기준에 최신순(DESC)을 누락하면 엉뚱한 과거 데이터가 1번이 되어버립니다. 정렬 방향을 꼭 확인하세요.",
+                targetTable: "login_log (로그인 기록)",
+                sourceData: [
+                    { user: 'A', time: '09:00' },
+                    { user: 'A', time: '11:00' },
+                    { user: 'B', time: '10:00' }
+                ],
+                goal: "유저별로 가장 마지막 방문 기록 1건씩 추출",
+                logicDetail: "login_log에서 1) 유저(user)별로 묶고 2) 시간(time)이 늦은 순(DESC)으로 순번을 매긴 뒤, 3) 1번인 최신 로그만 남깁니다.",
+                example: "SELECT * \nFROM login_log\nQUALIFY ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) = 1;",
+                mockResult: [
+                    { user: 'A', time: '11:00' },
+                    { user: 'B', time: '10:00' }
+                ],
+                icons: "list-ordered"
             }
         ];
+
+        const JoinVisualizer = ({ type }) => {
+            return (
+                <div className="flex flex-col items-center justify-center space-y-4">
+                    <div className="venn-container">
+                        <div className={`venn-circle-base venn-circle-a border-blue-600 ${type === 'join_left' ? 'join-active-fill' : ''} flex items-center justify-center`}>
+                            <span className={`text-xs font-bold ${type === 'join_left' ? 'text-white' : 'text-blue-600'}`}>Table A</span>
+                        </div>
+                        <div className="venn-circle-base venn-circle-b flex items-center justify-center">
+                            <span className="text-xs font-bold text-slate-400">Table B</span>
+                        </div>
+                        <div className="venn-intersection">
+                            <div className={`intersection-fill ${type === 'join_left' ? 'opacity-100' : ''}`}></div>
+                        </div>
+                    </div>
+                    <div className="text-center px-4">
+                        <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-bold uppercase tracking-widest mb-2">LEFT JOIN (현재 기준)</span>
+                        <p className="text-[11px] text-slate-500 break-keep leading-relaxed px-2">
+                            왼쪽 테이블(A)의 데이터는 <strong>조건과 상관없이 모두 유지</strong>하며, 오른쪽(B)에 일치하는 데이터가 있을 때만 가져옵니다.
+                        </p>
+                    </div>
+                </div>
+            );
+        };
 
         const App = () => {
             const [activeStep, setActiveStep] = useState(1);
@@ -133,176 +314,214 @@
 
             return (
                 <div className="h-screen flex flex-col bg-slate-50">
-                    <nav className="flex-none bg-white border-b border-slate-200 z-50">
+                    <nav className="flex-none bg-white border-b border-slate-200 z-50 shadow-sm">
                         <div className="max-w-full mx-auto px-6 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="bg-blue-600 p-1.5 rounded-lg text-white">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-200">
                                     <Icon name="terminal" size={20} />
                                 </div>
                                 <h1 className="text-xl font-black text-slate-900 tracking-tight">SQL 기본 마스터 <span className="text-blue-600 font-medium text-sm ml-1">2026</span></h1>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="hidden lg:flex flex-col items-end mr-4">
-                                    <span className="text-[10px] font-bold text-slate-400 leading-none">PRACTICE ENVIRONMENT</span>
-                                    <span className="text-xs font-bold text-slate-600">BigQuery Sandbox Project</span>
-                                </div>
-                                <button className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center gap-2">
-                                    <Icon name="key" size={14} />
-                                    샌드박스 계정 확인
-                                </button>
-                            </div>
+                            <button 
+                                onClick={() => window.open('https://daily-mission-site.com', '_blank')}
+                                className="px-5 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-all shadow-md flex items-center gap-2"
+                            >
+                                <Icon name="calendar-check" size={14} />
+                                데일리 미션 사이트
+                            </button>
                         </div>
                     </nav>
 
                     <div className="flex-grow flex overflow-hidden">
                         <aside className="w-80 flex-none bg-white border-r border-slate-200 overflow-y-auto p-6 hidden md:block">
                             <div className="mb-8 px-2">
-                                <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">학습 커리큘럼</h2>
-                                <p className="text-xs text-slate-500 font-medium leading-relaxed">각 단계는 이전 단계의 논리를 바탕으로 설계되었습니다.</p>
+                                <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">학습 로드맵</h2>
+                                <p className="text-xs text-slate-500 font-medium leading-relaxed break-keep">기초부터 심화까지, 입문자를 위해 설계된 난이도별 로드맵입니다.</p>
                             </div>
                             <nav className="space-y-2">
                                 {STEPS_DATA.map((item) => (
                                     <button
                                         key={item.step}
                                         onClick={() => setActiveStep(item.step)}
-                                        className={`w-full flex items-center gap-4 p-4 rounded-2xl text-left transition-all group ${
+                                        className={`w-full flex items-center gap-4 p-4 rounded-2xl text-left transition-all ${
                                             activeStep === item.step 
-                                            ? 'bg-blue-600 text-white active-step-shadow translate-x-1' 
+                                            ? 'bg-blue-600 text-white active-step-shadow translate-x-1 shadow-lg shadow-blue-100' 
                                             : 'bg-white text-slate-600 hover:bg-slate-50 hover:translate-x-1 border border-transparent'
                                         }`}
                                     >
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-none font-black text-xs ${
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-none font-black text-sm ${
                                             activeStep === item.step ? 'bg-white/20' : 'bg-slate-100'
                                         }`}>
                                             {item.step}
                                         </div>
-                                        <div className="overflow-hidden">
-                                            <div className="text-sm font-bold truncate">{item.title}</div>
-                                            <div className={`text-[10px] truncate uppercase font-bold tracking-tighter ${activeStep === item.step ? 'text-blue-200' : 'text-slate-400'}`}>
-                                                LOGIC {item.step}
+                                        <div className="overflow-hidden py-1">
+                                            <div className="text-sm font-bold break-keep leading-snug">{item.title}</div>
+                                            <div className={`text-[11px] font-bold mt-1 tracking-tight ${activeStep === item.step ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                {item.grammar}
                                             </div>
                                         </div>
                                     </button>
                                 ))}
                             </nav>
-
-                            <div className="mt-12 bg-blue-50/50 rounded-2xl p-5 border border-blue-100/50">
-                                <div className="flex items-center gap-2 text-blue-900 font-bold text-sm mb-2">
-                                    <Icon name="info" size={16} className="text-blue-600" />
-                                    <span>학습 가이드</span>
-                                </div>
-                                <p className="text-[11px] text-blue-800/70 leading-relaxed">상단의 '샌드박스 계정' 버튼을 눌러 발급된 계정으로 BigQuery에 접속하면 예제 데이터를 직접 조회해볼 수 있습니다.</p>
-                            </div>
                         </aside>
 
-                        <main className="flex-grow overflow-y-auto bg-slate-50 p-6 lg:p-12 pb-40">
-                            <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-500">
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 text-blue-600 font-bold text-sm tracking-tighter uppercase">
+                        <main className="flex-grow overflow-y-auto bg-slate-50 p-4 lg:p-12 pb-40 content-scroll">
+                            <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-blue-600 font-bold text-sm uppercase tracking-wider">
                                         <Icon name={currentData.icons} size={18} />
-                                        <span>Step {currentData.step} Logic</span>
+                                        <span>단계 {currentData.step} 가이드</span>
                                     </div>
-                                    <h2 className="text-3xl lg:text-4xl font-black text-slate-900 leading-tight">
-                                        {currentData.title}
+                                    <h2 className="text-3xl lg:text-4xl font-black text-slate-900 leading-tight break-keep text-balance">
+                                        {currentData.title}: <span className="text-blue-600">{currentData.grammar}</span>
                                     </h2>
-                                    <p className="text-lg text-slate-500 font-medium italic">
+                                    <p className="text-lg text-slate-500 font-medium italic break-keep">
                                         "{currentData.subtitle}"
                                     </p>
                                 </div>
 
                                 <div className="grid gap-8">
-                                    {/* Theory & Checkpoint Section */}
-                                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 border border-slate-200 shadow-sm space-y-10">
-                                        <section>
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
-                                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">핵심 이론 및 실행 논리</h4>
-                                            </div>
-                                            <p className="text-slate-700 text-lg leading-relaxed font-medium">
-                                                {currentData.theory}
-                                            </p>
-                                        </section>
-
-                                        <section className="bg-slate-50 rounded-3xl p-6 lg:p-8 border border-slate-200 flex flex-col md:flex-row gap-6">
-                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm flex-none">
-                                                <Icon name="check-square" size={24} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <h5 className="font-black text-slate-900 text-lg leading-tight">
-                                                    논리 점검 (Logic Check)
-                                                </h5>
-                                                <p className="text-slate-600 text-base leading-relaxed">
-                                                    {currentData.checkpoint}
+                                    <div className={`grid grid-cols-1 ${currentData.grammar === 'JOIN' ? 'lg:grid-cols-3' : ''} gap-8`}>
+                                        <div className={`${currentData.grammar === 'JOIN' ? 'lg:col-span-2' : ''} bg-white rounded-[2rem] p-6 lg:p-10 border border-slate-200 shadow-sm space-y-8`}>
+                                            <section>
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+                                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">상세 이론 및 사용법</h4>
+                                                </div>
+                                                <p className="text-slate-700 text-lg leading-relaxed font-medium whitespace-pre-wrap break-keep">
+                                                    {currentData.theory}
                                                 </p>
+                                            </section>
+
+                                            <section className="bg-blue-50/50 rounded-2xl p-6 border border-blue-100 flex items-start gap-3 ml-0">
+                                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm flex-none">
+                                                    <Icon name="check-square" size={20} />
+                                                </div>
+                                                <div className="space-y-1 text-left">
+                                                    <h5 className="font-black text-slate-900 text-base leading-none pt-1">논리 점검 (Logic Check)</h5>
+                                                    <p className="text-slate-600 text-sm leading-relaxed break-keep">
+                                                        {currentData.checkpoint}
+                                                    </p>
+                                                </div>
+                                            </section>
+                                        </div>
+                                        
+                                        {currentData.grammar === 'JOIN' && (
+                                            <div className="lg:col-span-1">
+                                                <div className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm h-full flex flex-col items-center justify-center">
+                                                    <div className="flex items-center gap-2 mb-6 self-start">
+                                                        <Icon name="eye" size={16} className="text-blue-600" />
+                                                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">시각 논리 도표</h4>
+                                                    </div>
+                                                    <JoinVisualizer type="join_left" />
+                                                </div>
                                             </div>
-                                        </section>
+                                        )}
                                     </div>
 
-                                    {/* Practical Implementation Section */}
-                                    <div className="bg-white rounded-[2.5rem] p-8 lg:p-10 border border-slate-200 shadow-sm space-y-8">
+                                    <div className="bg-white rounded-[2rem] p-6 lg:p-10 border border-slate-200 shadow-sm space-y-8">
                                         <div className="flex items-center gap-2 mb-2">
                                             <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
-                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">실무 구현 예시</h4>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">실무 예제</h4>
                                         </div>
 
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                            <div className="space-y-4">
-                                                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 h-full">
-                                                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Implementation Goal</h5>
-                                                    <div className="space-y-3">
-                                                        <div className="flex items-center gap-2 text-sm">
-                                                            <span className="text-slate-400 font-bold w-16">Table:</span>
-                                                            <code className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">{currentData.targetTable}</code>
+                                        <div className="space-y-6">
+                                            <div className="space-y-3">
+                                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <Icon name="database" size={12} />
+                                                    원본 테이블 예시 (3행 샘플)
+                                                </h5>
+                                                <div className="border border-slate-100 rounded-2xl overflow-x-auto bg-slate-50/50">
+                                                    <table className="min-w-full text-xs text-left">
+                                                        <thead className="bg-slate-100 border-b border-slate-200">
+                                                            <tr>
+                                                                {Object.keys(currentData.sourceData[0]).map(k => (
+                                                                    <th key={k} className="px-4 py-3 font-bold text-slate-500 uppercase whitespace-nowrap">{k}</th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-200">
+                                                            {currentData.sourceData.map((row, i) => (
+                                                                <tr key={i}>
+                                                                    {Object.values(row).map((v, j) => (
+                                                                        <td key={j} className="px-4 py-3 text-slate-600 whitespace-nowrap">{v}</td>
+                                                                    ))}
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            {/* 쿼리 의미 해석 섹션을 에디터 상단으로 이동 */}
+                                            <div className="grid grid-cols-1 gap-6">
+                                                <div className="space-y-4">
+                                                    <div className="bg-amber-50/50 rounded-3xl p-6 border border-amber-100">
+                                                        <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3">쿼리 의미 해석 (Query Logic Breakdown)</h5>
+                                                        <p className="text-slate-700 text-sm font-medium leading-relaxed break-keep underline decoration-amber-200 underline-offset-4 decoration-2">
+                                                            {currentData.logicDetail}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col justify-center">
+                                                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">구현 목표</h5>
+                                                            <div className="space-y-4">
+                                                                <div className="flex items-center gap-3 text-sm">
+                                                                    <span className="text-slate-400 font-bold w-14 text-xs">테이블:</span>
+                                                                    <code className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">{currentData.targetTable}</code>
+                                                                </div>
+                                                                <div className="flex items-start gap-3 text-sm leading-relaxed text-slate-700">
+                                                                    <span className="text-slate-400 font-bold w-14 flex-none text-xs">목표:</span>
+                                                                    <span className="font-medium break-keep">{currentData.goal}</span>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex items-start gap-2 text-sm leading-relaxed text-slate-700">
-                                                            <span className="text-slate-400 font-bold w-16 flex-none">Goal:</span>
-                                                            <span className="font-medium">{currentData.goal}</span>
+
+                                                        <div className="bg-slate-900 rounded-3xl p-6 text-blue-300 shadow-inner relative overflow-hidden min-h-[160px]">
+                                                            <div className="text-[10px] font-bold text-slate-500 mb-3 flex items-center justify-between">
+                                                                <span>쿼리 에디터</span>
+                                                                <Icon name="code" size={14} className="opacity-30" />
+                                                            </div>
+                                                            <pre className="text-sm font-mono leading-relaxed overflow-x-auto whitespace-pre">
+                                                                <code>{currentData.example}</code>
+                                                            </pre>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div className="bg-slate-900 rounded-2xl p-6 text-blue-300 shadow-inner relative overflow-hidden h-full">
-                                                <div className="text-[10px] font-bold text-slate-500 mb-3 flex items-center justify-between">
-                                                    <span>SQL EDITOR</span>
-                                                    <Icon name="code" size={14} className="opacity-30" />
-                                                </div>
-                                                <pre className="text-sm font-mono leading-relaxed overflow-x-auto">
-                                                    <code>{currentData.example}</code>
-                                                </pre>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                                <Icon name="table" size={12} />
-                                                Expected Output (Mock)
-                                            </h5>
-                                            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                                                <table className="w-full text-sm text-left border-collapse">
-                                                    <thead className="bg-slate-50 border-b border-slate-200">
-                                                        <tr>
-                                                            {Object.keys(currentData.mockResult[0]).map(key => (
-                                                                <th key={key} className="px-4 py-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider">{key}</th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-slate-100">
-                                                        {currentData.mockResult.map((row, idx) => (
-                                                            <tr key={idx} className="bg-white">
-                                                                {Object.values(row).map((val, i) => (
-                                                                    <td key={i} className="px-4 py-3 text-slate-700 font-mono text-xs">{val}</td>
+                                            <div className="space-y-3">
+                                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <Icon name="table" size={12} />
+                                                    예상 결과 화면
+                                                </h5>
+                                                <div className="border border-slate-200 rounded-2xl overflow-x-auto shadow-sm">
+                                                    <table className="min-w-full text-sm text-left border-collapse">
+                                                        <thead className="bg-slate-50 border-b border-slate-200">
+                                                            <tr>
+                                                                {Object.keys(currentData.mockResult[0]).map(key => (
+                                                                    <th key={key} className="px-4 py-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider whitespace-nowrap">{key}</th>
                                                                 ))}
                                                             </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {currentData.mockResult.map((row, idx) => (
+                                                                <tr key={idx} className="bg-white">
+                                                                    {Object.values(row).map((val, i) => (
+                                                                        <td key={i} className="px-4 py-3 text-slate-700 font-mono text-xs whitespace-nowrap">{val}</td>
+                                                                    ))}
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between pt-10">
+                                <div className="flex items-center justify-between pt-10 pb-10">
                                     <button 
                                         onClick={() => setActiveStep(prev => Math.max(1, prev - 1))}
                                         disabled={activeStep === 1}
@@ -311,10 +530,10 @@
                                         }`}
                                     >
                                         <Icon name="chevron-left" size={18} />
-                                        이전 로직
+                                        이전
                                     </button>
                                     
-                                    <div className="text-xs font-black text-slate-400 tracking-widest uppercase bg-white px-4 py-2 rounded-full border border-slate-100 shadow-sm">
+                                    <div className="text-xs font-black text-slate-400 tracking-widest uppercase bg-white px-5 py-2.5 rounded-full border border-slate-100 shadow-sm">
                                         {activeStep} / {STEPS_DATA.length}
                                     </div>
 
@@ -325,7 +544,7 @@
                                             activeStep === STEPS_DATA.length ? 'opacity-30 cursor-not-allowed text-slate-300' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200'
                                         }`}
                                     >
-                                        다음 로직
+                                        다음
                                         <Icon name="chevron-right" size={18} />
                                     </button>
                                 </div>
