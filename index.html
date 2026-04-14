@@ -152,7 +152,7 @@
                 title: "형식 바꾸기",
                 grammar: "CAST",
                 subtitle: "빅쿼리 데이터 타입의 강제 변환",
-                theory: "데이터가 저장된 형식(Type)을 강제로 변경하여 계산이나 결합이 가능하도록 만듭니다.\n\n[사용 방법]\n- CAST([데이터] AS [데이터형식])\n- STRING : 문자열 (텍스트 결합 시 유용)\n- INT64 : 정수 (산술 연산 시 유용)\n- DATE : 날짜 (날짜 연산 시 유용)\n\n예: CAST('20260401' AS INT64) -> 숫자로 변환되어 크기 비교 가능",
+                theory: "데이터가 저장된 형식(Type)을 강제로 변경하여 계산이나 결합이 가능하도록 만듭니다.\n\n[사용 방법]\nCAST([데이터] AS [데이터형식])\n\n[빅쿼리 표준 데이터 형식]\n- STRING : 문자열\n- INT64 : 64비트 정수 (빅쿼리 표준 정수형)\n- FLOAT64 : 64비트 실수 (소수점 연산 시 사용)\n- DATE : 날짜 (YYYY-MM-DD 형식)\n- BOOL : 논리형 (True / False)\n\n※ 왜 INT가 아니라 INT64인가요? 빅쿼리는 대용량 처리를 위해 정밀도가 높은 64비트 연산을 기본으로 채택하고 있습니다. 따라서 공식 명칭으로 INT64를 사용합니다.",
                 checkpoint: "문자열 '100'과 숫자 100은 연산 방식이 완전히 다릅니다. '100' + '100'은 에러가 나거나 문자가 이어 붙을 수 있으므로 연산 전 형변환을 반드시 거치세요.",
                 targetTable: "raw_data",
                 sourceData: {
@@ -202,7 +202,7 @@
                 title: "테이블 합치기",
                 grammar: "JOIN",
                 subtitle: "공통 키를 활용한 데이터 결합",
-                theory: "서로 다른 테이블에 흩어진 정보를 하나로 모읍니다. 공통된 연결 고리(ID 등)가 필요합니다.\n\n[사용 방법]\nSELECT a.컬럼, b.컬럼 \nFROM 테이블A AS a \nLEFT JOIN 테이블B AS b ON a.키 = b.키;\n\n- LEFT JOIN : 왼쪽 테이블 데이터를 유지하며 오른쪽 정보를 추가합니다.\n- INNER JOIN : 두 테이블 모두에 존재하는 데이터만 합칩니다.\n- ON : 결합 기준이 되는 컬럼을 지정합니다.",
+                theory: "서로 다른 테이블에 흩어진 정보를 하나로 모읍니다. 공통된 연결 고리(ID 등)가 필요합니다.\n\n[사용 방법]\nSELECT a.컬럼, b.컬럼 \nFROM 테이블A AS a \nLEFT JOIN 테이블B AS b ON a.키 = b.키;\n\n- LEFT JOIN : 왼쪽 테이블 데이터를 유지하며 오른쪽 정보를 추가합니다.\n- INNER JOIN : 두 테이블 모두에 데이터가 존재하는 것만 합칩니다.\n- ON : 결합 기준이 되는 컬럼을 지정합니다.",
                 checkpoint: "JOIN을 수행할 때 기준이 되는 키(ID)에 중복값이 있으면 결과 행이 예상보다 기하급수적으로 늘어날 수 있습니다. 결합 전 대상 테이블의 중복 여부를 먼저 의심하고 확인하세요.",
                 targetTable: "orders & users",
                 sourceData: {
