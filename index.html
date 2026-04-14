@@ -25,6 +25,23 @@
         .content-scroll { scroll-behavior: smooth; }
         .text-balance { text-wrap: balance; }
         .break-keep { word-break: keep-all; }
+        
+        /* Venn Diagram Styles */
+        .venn-container { position: relative; width: 220px; height: 140px; margin: 0 auto; }
+        .venn-circle-base { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid #cbd5e1; background: #fff; transition: all 0.3s ease; z-index: 1; }
+        .venn-circle-a { left: 0; top: 10px; }
+        .venn-circle-b { right: 0; top: 10px; }
+        .join-active-fill { background-color: #3b82f6 !important; opacity: 0.6 !important; }
+        
+        /* Intersection clipping layer */
+        .venn-intersection { position: absolute; left: 50px; top: 10px; width: 70px; height: 120px; overflow: hidden; z-index: 2; }
+        .intersection-fill { position: absolute; left: -50px; width: 120px; height: 120px; border-radius: 50%; background-color: #3b82f6; opacity: 0; transition: opacity 0.3s ease; }
+        
+        /* Text Labels layer */
+        .venn-label { position: absolute; top: 0; width: 120px; height: 140px; display: flex; align-items: center; justify-content: center; z-index: 10; pointer-events: none; font-size: 12px; font-weight: 800; }
+        .label-a { left: 0; color: #1e40af; }
+        .label-b { right: 0; color: #64748b; }
+        .label-active-text { color: #ffffff !important; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 leading-relaxed overflow-hidden">
@@ -83,7 +100,7 @@
                 title: "조건으로 거르기",
                 grammar: "WHERE",
                 subtitle: "데이터 필터링과 논리 연산자",
-                theory: "WHERE 절을 사용하면 전체 데이터 중 특정 조건에 맞는 행(Row)만 골라낼 수 있습니다.\n\n[사용 방법]\n- WHERE [컬럼명] [연산자] [값] : 필터 조건을 작성합니다.\n- AND : 나열된 모든 조건이 참(True)이어야 할 때 사용합니다. (조건1 AND 조건2)\n- OR : 조건 중 하나라도 참이면 결과에 포함합니다.\n- IN (값1, 값2) : 여러 후보 값 중 하나라도 일치하면 추출합니다.\n- BETWEEN A AND B : A와 B 사이의 범위에 있는 값을 찾습니다.",
+                theory: "WHERE 절은 특정 조건에 맞는 행(Row)만 골라낼 때 사용합니다.\n\n[사용 방법]\nWHERE [컬럼명] [연산자] [값]\nEx) WHERE sales > 3000\n\n* 조건이 여러 개일 경우, AND 또는 OR로 연결합니다.\nEx) WHERE city = '서울' AND sales > 5000\n\n[필터 조건 관련 문법]\n- AND : 나열된 모든 조건이 참(True)이어야 함\n- OR : 조건 중 하나라도 참이면 결과에 포함\n- IN (값1, 값2) : 여러 후보 값 중 하나라도 일치하면 추출\n- LIKE '%패턴%' : 특정 문자가 포함된 데이터를 찾을 때 사용 (예: '%서울%'은 앞뒤 상관없이 서울이 들어간 모든 값)\n- BETWEEN A AND B : A와 B 사이의 범위에 있는 값을 찾음 (A, B 포함)",
                 checkpoint: "데이터에 빈 값(NULL)이 포함된 경우, '=' 이나 '!=' 연산자로는 걸러지지 않습니다. 반드시 'IS NULL' 또는 'IS NOT NULL'을 사용하여 데이터 누락 가정을 확인하십시오.",
                 targetTable: "users",
                 sourceData: {
@@ -129,8 +146,8 @@
                 title: "그룹화 및 그룹 필터링",
                 grammar: "GROUP BY & HAVING",
                 subtitle: "기준별 데이터 묶기와 요약 결과 필터링",
-                theory: "데이터를 특정 기준(차원)으로 그룹을 지어 통계를 낼 때 사용합니다.\n\n[사용 방법]\n- GROUP BY [기준컬럼] : 데이터를 묶을 기준을 명시합니다. SELECT 절의 일반 컬럼은 모두 여기에 포함되어야 합니다.\n- HAVING [집계조건] : GROUP BY로 뭉쳐진 '결과값'에 조건을 걸 때 사용합니다.\n\nSELECT 지역, SUM(매출) FROM 테이블 GROUP BY 지역 HAVING SUM(매출) > 5000;",
-                checkpoint: "WHERE와 HAVING의 결정적 차이:\n- WHERE : 데이터를 뭉치기 전(Before) 개별 행을 필터링합니다.\n- HAVING : 데이터를 뭉친 후(After) 집계 결과(합계, 평균 등)를 필터링합니다.\n평균 매출액 1만 원 이상을 거르려면 무조건 HAVING을 써야 합니다.",
+                theory: "데이터를 특정 기준(차원)으로 그룹을 지어 통계를 낼 때 사용합니다.\n\n[GROUP BY 사용 방법]\n- GROUP BY [기준컬럼] : 데이터를 묶을 기준을 명시합니다.\n- SELECT 절에 있는 집계 함수가 아닌 일반 컬럼은 반드시 여기에 포함되어야 합니다.\n\n[HAVING 사용 방법]\n- HAVING [집계조건] : GROUP BY로 생성된 '그룹화된 결과물'에 조건을 걸 때 사용합니다.\n\nSELECT \n  지역, \n  SUM(매출) \nFROM 테이블 \nGROUP BY 지역 \nHAVING SUM(매출) > 5000;",
+                checkpoint: "WHERE와 HAVING의 결정적 차이를 검증하세요:\n- WHERE : 그룹화 전(Before) 개별 행을 필터링합니다.\n- HAVING : 그룹화된 결과물(After) 집계 결과에 대해 조건을 겁니다.\n* SELECT에서 만든 별칭은 HAVING 절에서는 사용할 수 있지만, WHERE 절에서는 사용할 수 없습니다.",
                 targetTable: "sales",
                 sourceData: {
                     "sales": [
@@ -140,7 +157,7 @@
                     ]
                 },
                 goal: "지역별 총 매출을 구하고, 합계가 1만 원 넘는 지역만 보기",
-                logicDetail: "sales 테이블에서 1) 지역(region)별로 데이터를 묶고 2) 각 지역의 합계(SUM)를 구한 뒤 3) 그 합이 10,000보다 큰 지역만 필터링(HAVING)합니다.",
+                logicDetail: "sales 테이블에서 1) 지역(region)별로 데이터를 묶고 2) 각 지역의 합계(SUM)를 구한 뒤 3) 그 합이 10,000보다 큰 그룹화된 결과물만 필터링(HAVING)합니다.",
                 example: "SELECT region, SUM(amt) AS total\nFROM sales\nGROUP BY region\nHAVING SUM(amt) > 10000;",
                 mockResult: [
                     { region: '서울', total: 12000 }
@@ -149,10 +166,10 @@
             },
             {
                 step: 5,
-                title: "형식 바꾸기",
+                title: "데이터 형식 바꾸기",
                 grammar: "CAST",
                 subtitle: "빅쿼리 데이터 타입의 강제 변환",
-                theory: "데이터가 저장된 형식(Type)을 강제로 변경하여 계산이나 결합이 가능하도록 만듭니다.\n\n[사용 방법]\nCAST([데이터] AS [데이터형식])\n\n[빅쿼리 표준 데이터 형식]\n- STRING : 문자열\n- INT64 : 64비트 정수 (빅쿼리 표준 정수형)\n- FLOAT64 : 64비트 실수 (소수점 연산 시 사용)\n- DATE : 날짜 (YYYY-MM-DD 형식)\n- BOOL : 논리형 (True / False)\n\n※ 왜 INT가 아니라 INT64인가요? 빅쿼리는 대용량 처리를 위해 정밀도가 높은 64비트 연산을 기본으로 채택하고 있습니다. 따라서 공식 명칭으로 INT64를 사용합니다.",
+                theory: "데이터가 저장된 형식(Type)을 강제로 변경하여 계산이나 결합이 가능하도록 만듭니다.\n\n[사용 방법]\nCAST([데이터] AS [데이터형식])\n\n[빅쿼리 표준 데이터 형식]\n- STRING : 문자열\n- INT64 : 64비트 정수 (빅쿼리 표준 정수형 명칭)\n- FLOAT64 : 64비트 실수 (소수점 연산 시 사용)\n- DATE : 날짜 (YYYY-MM-DD 형식)\n- BOOL : 논리형 (True / False)\n\n※ 왜 INT가 아니라 INT64인가요? 빅쿼리는 대용량 처리를 위해 정밀도가 높은 64비트 연산을 기본으로 채택하고 있습니다.",
                 checkpoint: "문자열 '100'과 숫자 100은 연산 방식이 완전히 다릅니다. '100' + '100'은 에러가 나거나 문자가 이어 붙을 수 있으므로 연산 전 형변환을 반드시 거치세요.",
                 targetTable: "raw_data",
                 sourceData: {
@@ -454,13 +471,6 @@
 
                                             <div className="grid grid-cols-1 gap-6">
                                                 <div className="space-y-4">
-                                                    <div className="bg-amber-50/50 rounded-3xl p-6 border border-amber-100">
-                                                        <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3">쿼리 의미 해석 (Query Logic Breakdown)</h5>
-                                                        <p className="text-slate-700 text-sm font-medium leading-relaxed break-keep underline decoration-amber-200 underline-offset-4 decoration-2">
-                                                            {currentData.logicDetail}
-                                                        </p>
-                                                    </div>
-
                                                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                                                         <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col justify-center">
                                                             <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">구현 목표</h5>
@@ -485,6 +495,13 @@
                                                                 <code>{currentData.example}</code>
                                                             </pre>
                                                         </div>
+                                                    </div>
+
+                                                    <div className="bg-amber-50/50 rounded-3xl p-6 border border-amber-100">
+                                                        <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3">쿼리 의미 해석 (Query Logic Breakdown)</h5>
+                                                        <p className="text-slate-700 text-sm font-medium leading-relaxed break-keep underline decoration-amber-200 underline-offset-4 decoration-2">
+                                                            {currentData.logicDetail}
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
