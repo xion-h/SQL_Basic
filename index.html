@@ -57,9 +57,9 @@
                 step: 1,
                 title: "데이터 꺼내기",
                 grammar: "FROM & SELECT",
-                subtitle: "데이터 바구니에서 필요한 것만 고르기",
-                theory: "SQL은 우리가 읽는 순서와 다르게 '어디서(FROM)' 데이터를 가져올지부터 결정한 뒤, '무엇을(SELECT)' 보여줄지 고민합니다.\n\n[사용 방법]\nSELECT 컬럼명1, 컬럼명2 FROM 테이블명;\n\nAS(별칭)를 사용하여 결과 화면의 이름을 예쁘게 지어줄 수 있습니다.",
-                checkpoint: "SELECT에서 정한 별명을 바로 옆 컬럼 계산에서 쓰면 에러가 납니다. 컴퓨터는 아직 이름표가 붙기 전 단계에서 계산을 시도하기 때문입니다.",
+                subtitle: "빅쿼리의 기본 규칙 이해하기",
+                theory: "SQL은 '어디서(FROM)' 가져올지 정하고 '무엇을(SELECT)' 보여줄지 결정합니다.\n\n[빅쿼리 기초 가이드]\n1. 문자열 : 반드시 작은따옴표(' ')로 감쌉니다. (예: '서울')\n2. 테이블/컬럼명 : 공백이나 특수문자가 있다면 백틱(` `)으로 감쌉니다.\n3. 마침표 : 쿼리의 끝에는 세미콜론(;)을 붙여 가독성을 높입니다.\n\nSELECT 컬럼1, 컬럼2 FROM `project.dataset.table`;",
+                checkpoint: "SELECT에서 부여한 AS(별명)는 동일한 SELECT 절 안의 다른 연산에서 참조할 수 없습니다. 컴퓨터는 아직 이름표가 붙기 전 단계에서 계산을 처리하기 때문입니다.",
                 targetTable: "orders",
                 sourceData: {
                     "orders": [
@@ -82,9 +82,9 @@
                 step: 2,
                 title: "조건으로 거르기",
                 grammar: "WHERE",
-                subtitle: "필요 없는 데이터 입구 컷!",
-                theory: "WHERE는 데이터를 뭉치기 전에 한 줄씩 검사하는 필터입니다.\n\n[사용 방법]\nSELECT ... FROM ... WHERE [조건];\n\n문자열은 따옴표(' ')로 감싸고, 숫자는 그대로 씁니다. 날짜 형식이 '20260101' 형태라면 숫자 크기 비교 연산이 가능합니다.",
-                checkpoint: "데이터에 빈 값(NULL)이 섞여 있으면 일반 비교(=, !=)로는 찾아낼 수 없습니다. 반드시 'IS NULL' 또는 'IS NOT NULL'을 사용하세요.",
+                subtitle: "따옴표 실수 주의하기!",
+                theory: "WHERE는 데이터를 한 줄씩 검사하여 필터링합니다.\n\n[빅쿼리 팁]\n문자열 조건에서 따옴표 짝이 맞지 않으면 'unrecognized token' 에러가 발생합니다. '서울' 처럼 앞뒤를 정확히 닫아주었는지 확인하세요.\n\nWHERE city = '서울' AND age >= 20;",
+                checkpoint: "데이터에 빈 값(NULL)이 있으면 일반 비교 연산으로는 찾을 수 없습니다. 반드시 'IS NULL' 또는 'IS NOT NULL' 조건을 사용하여 데이터 누락을 방지하세요.",
                 targetTable: "users",
                 sourceData: {
                     "users": [
@@ -105,9 +105,9 @@
                 step: 3,
                 title: "데이터 요약하기",
                 grammar: "COUNT, SUM, AVG",
-                subtitle: "기본 연산 함수 마스터",
-                theory: "전체 데이터의 합계나 평균 등을 구합니다. 단일 행이 아닌 전체 범위를 요약하는 과정입니다.\n\n[사용 방법]\n- COUNT(*): 전체 데이터 행 수\n- SUM(컬럼): 해당 컬럼의 합계\n- AVG(컬럼): 해당 컬럼의 평균\n\nSELECT SUM(amt) FROM 테이블;",
-                checkpoint: "AVG(평균) 계산 시 NULL 값은 분모에서 제외됩니다. 0으로 채워서 평균을 낼지, 제외할지 비즈니스 로직을 명확히 해야 합니다.",
+                subtitle: "숫자 데이터 요약",
+                theory: "빅쿼리에서 대량의 행을 요약하여 합계나 평균을 구합니다.\n\n- COUNT(컬럼): 해당 컬럼에 값이 있는 행의 수 (NULL 제외)\n- SUM(컬럼): 합계\n- AVG(컬럼): 평균\n\n결과는 항상 '단일 행'으로 요약됩니다.",
+                checkpoint: "AVG(평균) 계산 시 NULL 값은 분모에서 아예 제외됩니다. 전체 모수를 기준으로 평균을 내야 한다면 0으로 치환한 뒤 계산해야 함을 명심하세요.",
                 targetTable: "sales",
                 sourceData: {
                     "sales": [
@@ -128,9 +128,9 @@
                 step: 4,
                 title: "그룹화 및 필터링",
                 grammar: "GROUP BY & HAVING",
-                subtitle: "끼리끼리 뭉쳐서 거르기",
-                theory: "데이터를 그룹으로 묶은 후, 그 결과값에 조건을 겁니다.\n\n[사용 방법]\nSELECT 기준, SUM(값) FROM ... GROUP BY 기준 HAVING SUM(값) > 100;\n\nWHERE는 뭉치기 전 필터, HAVING은 뭉친 결과물에 대한 필터입니다.",
-                checkpoint: "SELECT 절에 집계 함수(SUM 등)가 아닌 컬럼이 있다면, 그 컬럼은 반드시 GROUP BY 절에도 똑같이 적어줘야 에러가 나지 않습니다.",
+                subtitle: "기준별로 묶어서 결과 확인",
+                theory: "특정 기준(지역, 팀)으로 데이터를 묶습니다.\n\n[사용 방법]\nSELECT 지역, SUM(매출) \nFROM 테이블 \nGROUP BY 지역 \nHAVING SUM(매출) > 1000;\n\nHAVING은 묶인 결과물에 대해 조건을 거는 단계입니다.",
+                checkpoint: "SELECT 절에 집계 함수가 아닌 일반 컬럼이 있다면, 빅쿼리는 해당 컬럼을 반드시 GROUP BY 절에도 똑같이 적어줘야 에러가 나지 않습니다.",
                 targetTable: "sales",
                 sourceData: {
                     "sales": [
@@ -140,7 +140,7 @@
                     ]
                 },
                 goal: "지역별 총 매출을 구하고, 합계가 1만 원 넘는 지역만 보기",
-                logicDetail: "sales 테이블에서 1) 지역(region)별로 데이터를 묶고 2) 각 지역의 합계(SUM)를 구한 뒤 3) 그 합이 10,000보다 큰 서울 지역만 남깁니다.",
+                logicDetail: "sales 테이블에서 1) 지역(region)별로 데이터를 묶고 2) 각 지역의 합계(SUM)를 구한 뒤 3) 그 합이 10,000보다 큰 지역만 남깁니다.",
                 example: "SELECT region, SUM(amt) AS total\nFROM sales\nGROUP BY region\nHAVING SUM(amt) > 10000;",
                 mockResult: [
                     { region: '서울', total: 12000 }
@@ -149,11 +149,11 @@
             },
             {
                 step: 5,
-                title: "데이터 형식 바꾸기",
+                title: "형식 바꾸기",
                 grammar: "CAST",
-                subtitle: "숫자를 문자로, 문자를 숫자로",
-                theory: "데이터 그릇의 모양을 강제로 바꿉니다. 숫자가 문자로 저장되어 있으면 더하기 연산이 불가능하기 때문입니다.\n\n[사용 방법]\nCAST(컬럼 AS INT64) -> 숫자로\nCAST(컬럼 AS STRING) -> 문자로",
-                checkpoint: "글자 '500'에 100을 더하면 에러가 나거나 '500100'이 될 수 있습니다. 연산 전에는 반드시 숫자로 형변환이 되었는지 확인하세요.",
+                subtitle: "빅쿼리 데이터 타입 변환",
+                theory: "데이터 그릇의 모양을 강제로 바꿉니다.\n\n- STRING: 문자형\n- INT64: 정수형 (빅쿼리 표준 숫자형)\n- DATE: 날짜형\n\nCAST('100' AS INT64) 처럼 써서 계산이 가능한 숫자로 변신시킵니다.",
+                checkpoint: "글자 '500'에 100을 더하면 빅쿼리는 에러를 출력합니다. 연산 전에는 반드시 CAST를 통해 숫자로 형변환이 되었는지 확인하세요.",
                 targetTable: "raw_data",
                 sourceData: {
                     "raw_data": [
@@ -176,9 +176,9 @@
                 step: 6,
                 title: "조건에 따라 나누기",
                 grammar: "CASE WHEN",
-                subtitle: "데이터 등급 매기기",
-                theory: "비즈니스 조건에 따라 값을 분류합니다.\n\n[사용 방법]\nCASE WHEN 조건 THEN 결과 ELSE 그외 END AS 이름;\n\n복잡한 'If-Else' 로직을 쿼리 한 줄로 구현할 수 있습니다.",
-                checkpoint: "ELSE를 생략하면 조건에 해당하지 않는 데이터는 모두 NULL이 됩니다. '그 외'를 뜻하는 ELSE를 적어주는 방어적 코딩이 중요합니다.",
+                subtitle: "등급 및 분류 로직 적용",
+                theory: "비즈니스 기준에 따라 값을 분류합니다.\n\nCASE \n  WHEN 점수 >= 90 THEN 'A' \n  ELSE 'B' \nEND AS 등급;\n\n반드시 END로 닫아줘야 문장이 완성됩니다.",
+                checkpoint: "ELSE를 생략하면 조건에 해당하지 않는 모든 데이터는 NULL이 됩니다. 의도하지 않은 누락을 막기 위해 ELSE '기본값'을 적는 것이 안전합니다.",
                 targetTable: "points",
                 sourceData: {
                     "points": [
@@ -202,8 +202,8 @@
                 title: "테이블 합치기",
                 grammar: "JOIN",
                 subtitle: "자석처럼 데이터 이어 붙이기",
-                theory: "두 테이블을 공통 키(ID 등)를 기준으로 옆으로 붙입니다.\n\n- LEFT JOIN: 왼쪽(A) 데이터는 무조건 보존\n- INNER JOIN: 양쪽 모두에 데이터가 있는 것만 남김",
-                checkpoint: "JOIN 후에 데이터가 갑자기 늘어났다면(뻥튀기), 오른쪽 테이블에 동일한 키 값이 여러 개 중복되어 있는지 의심해봐야 합니다.",
+                theory: "두 테이블을 공통 키(ID 등)를 기준으로 옆으로 붙입니다.\n\n- LEFT JOIN: 왼쪽(A) 데이터는 무조건 보존\n- ON: 어떤 컬럼을 기준으로 합칠지 정의\n\nSELECT a.*, b.이름 \nFROM A AS a \nLEFT JOIN B AS b ON a.id = b.id;",
+                checkpoint: "JOIN을 할 때 기준이 되는 키(ID)가 중복되어 있으면 행의 개수가 기하급수적으로 늘어날 수 있습니다(Fan-out). 데이터 정합성을 꼭 체크하세요.",
                 targetTable: "orders & users",
                 sourceData: {
                     "orders": [
@@ -218,7 +218,7 @@
                     ]
                 },
                 goal: "주문 정보에 고객 이름을 붙여서 출력",
-                logicDetail: "orders 테이블(a)을 기준으로 1) users 테이블(b)을 u_id가 일치하는 것끼리 왼쪽 조인하여 2) 주문번호와 사용자 이름을 나란히 출력합니다.",
+                logicDetail: "orders 테이블(a)을 기준으로 1) users 테이블(b)을 u_id가 일치하는 것끼리 왼쪽 조인(LEFT JOIN)하여 2) 주문번호와 사용자 이름을 출력합니다.",
                 example: "SELECT a.o_id, b.name\nFROM orders a\nLEFT JOIN users b ON a.u_id = b.u_id;",
                 mockResult: [
                     { o_id: '1', name: '김철수' },
@@ -229,11 +229,11 @@
             },
             {
                 step: 8,
-                title: "쿼리 구조화하기",
+                title: "단계별 구조화",
                 grammar: "WITH",
-                subtitle: "단계별로 깔끔하게 정리하기",
-                theory: "긴 쿼리를 임시 테이블로 쪼개어 가독성을 높입니다.\n\n[사용 방법]\nWITH 임시테이블명 AS (쿼리)\nSELECT ... FROM 임시테이블명;",
-                checkpoint: "서브쿼리보다 WITH 문이 훨씬 읽기 쉽습니다. 실무에서는 동료들을 위해 복잡한 로직을 WITH 문으로 쪼개서 작성하세요.",
+                subtitle: "빅쿼리에서 강력 추천하는 가독성 기법",
+                theory: "복잡한 쿼리를 논리적인 단계로 쪼갭니다. 임시 테이블을 만드는 것과 같습니다.\n\nWITH summary AS (\n  SELECT id, SUM(amt) FROM 테이블 GROUP BY id\n)\nSELECT * FROM summary;",
+                checkpoint: "서브쿼리보다 WITH 문이 훨씬 읽기 쉽고 디버깅이 편합니다. 실무에서는 복잡한 로직을 WITH 문으로 쪼개서 작성하는 것을 원칙으로 하세요.",
                 targetTable: "daily_sales",
                 sourceData: {
                     "daily_sales": [
@@ -252,35 +252,11 @@
             },
             {
                 step: 9,
-                title: "쿼리 안에 쿼리 넣기",
-                grammar: "Subquery",
-                subtitle: "동적인 값을 조건으로 활용하기",
-                theory: "다른 쿼리의 결과를 조건(WHERE) 등에 바로 씁니다.\n\n괄호() 안의 쿼리가 먼저 실행되어 바깥 쿼리에 값을 전달합니다.",
-                checkpoint: "서브쿼리가 너무 깊어지면 유지보수가 매우 힘들어집니다. 2단계 이상의 중첩은 가급적 WITH 문으로 전환을 고려하세요.",
-                targetTable: "all_employees",
-                sourceData: {
-                    "all_employees": [
-                        { name: 'Kim', sal: 5000 },
-                        { name: 'Lee', sal: 3000 },
-                        { name: 'Park', sal: 7000 }
-                    ]
-                },
-                goal: "평균 급여보다 많이 받는 직원 찾기",
-                logicDetail: "1) 서브쿼리(괄호 안)를 통해 전체 직원 급여 평균을 구하고, 2) 그 값보다 큰 급여를 받는 직원의 이름을 필터링합니다.",
-                example: "SELECT name \nFROM all_employees \nWHERE sal > (SELECT AVG(sal) FROM all_employees);",
-                mockResult: [
-                    { name: 'Kim' },
-                    { name: 'Park' }
-                ],
-                icons: "box"
-            },
-            {
-                step: 10,
-                title: "데이터에 순서 정하기",
-                grammar: "ROW_NUMBER",
-                subtitle: "중복 중 최신 데이터 1건 고르기",
-                theory: "특정 기준에 따라 데이터에 1, 2, 3... 번호를 매깁니다.\n\n- PARTITION BY: 누구별로 번호를 매길 것인가\n- ORDER BY: 어떤 순서로 1등을 줄 것인가",
-                checkpoint: "중복 제거용으로 쓸 때, ORDER BY 기준에 최신순(DESC)을 누락하면 엉뚱한 과거 데이터가 1번이 되어버립니다. 정렬 방향을 꼭 확인하세요.",
+                title: "중복 제거 및 순번",
+                grammar: "ROW_NUMBER & QUALIFY",
+                subtitle: "최신 데이터 1건 고르기",
+                theory: "데이터에 특정 기준에 따라 순위를 매깁니다. 빅쿼리의 QUALIFY는 서브쿼리 없이 순위를 즉시 필터링해주는 강력한 구문입니다.\n\nROW_NUMBER() OVER(PARTITION BY 유저 ORDER BY 시간 DESC)\nQUALIFY ROW_NUMBER() ... = 1;",
+                checkpoint: "순위를 매길 때 ORDER BY를 누락하면 결과가 무작위로 나옵니다. '가장 최근 데이터'를 원한다면 반드시 DESC(내림차순)를 명시하세요.",
                 targetTable: "login_log",
                 sourceData: {
                     "login_log": [
@@ -290,7 +266,7 @@
                     ]
                 },
                 goal: "유저별로 가장 마지막 방문 기록 1건씩 추출",
-                logicDetail: "login_log에서 1) 유저(user)별로 묶고 2) 시간(time)이 늦은 순(DESC)으로 순번을 매긴 뒤, 3) 1번인 최신 로그만 남깁니다.",
+                logicDetail: "login_log에서 1) 유저(user)별로 묶고 2) 시간(time)이 늦은 순(DESC)으로 순번을 매긴 뒤, 3) 1번인 최신 로그만 QUALIFY를 통해 남깁니다.",
                 example: "SELECT * \nFROM login_log\nQUALIFY ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) = 1;",
                 mockResult: [
                     { user: 'A', time: '11:00' },
@@ -304,22 +280,16 @@
             if (grammar !== 'JOIN') return null;
             return (
                 <div className="flex flex-col items-center justify-center space-y-4 w-full">
-                    {/* SVG 기반의 벤다이어그램으로 변경하여 가려짐 문제 완전 해결 */}
-                    <div className="w-full max-w-[240px] aspect-[12/7]">
+                    <div className="w-full max-w-[240px] aspect-[12/7] relative">
                         <svg viewBox="0 0 240 140" className="w-full h-full drop-shadow-sm">
-                            {/* Circle B (Bottom Layer) */}
                             <circle cx="150" cy="70" r="55" fill="#ffffff" stroke="#cbd5e1" strokeWidth="2" />
-                            
-                            {/* Circle A (Left Join logic: Circle A is fully highlighted) */}
                             <circle cx="90" cy="70" r="55" fill="#3b82f6" fillOpacity="0.6" stroke="#3b82f6" strokeWidth="3" />
-                            
-                            {/* Labels (Top Layer - Always visible) */}
-                            <text x="65" y="75" fontSize="13" fontWeight="900" fill="#ffffff" textAnchor="middle">Table A</text>
-                            <text x="175" y="75" fontSize="13" fontWeight="900" fill="#64748b" textAnchor="middle">Table B</text>
+                            <text x="70" y="75" fontSize="13" fontWeight="900" fill="#ffffff" textAnchor="middle" style={{pointerEvents: 'none'}}>Table A</text>
+                            <text x="170" y="75" fontSize="13" fontWeight="900" fill="#64748b" textAnchor="middle" style={{pointerEvents: 'none'}}>Table B</text>
                         </svg>
                     </div>
                     <div className="text-center px-4">
-                        <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-bold uppercase tracking-widest mb-2">LEFT JOIN (기준)</span>
+                        <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-bold uppercase tracking-widest mb-2">LEFT JOIN (빅쿼리 표준)</span>
                         <p className="text-[11px] text-slate-500 break-keep leading-relaxed px-2">
                             왼쪽 테이블(A)의 데이터는 <strong>무조건 유지</strong>하며, 오른쪽(B)에 일치하는 데이터가 있을 때만 가져옵니다.
                         </p>
@@ -331,6 +301,12 @@
         const App = () => {
             const [activeStep, setActiveStep] = useState(1);
             const currentData = STEPS_DATA.find(item => item.step === activeStep);
+
+            // 데이터 타입에 따른 정렬 클래스 반환 함수
+            const getAlignmentClass = (val) => {
+                if (typeof val === 'number') return 'text-left';
+                return 'text-right';
+            };
 
             return (
                 <div className="h-screen flex flex-col bg-slate-50">
@@ -356,7 +332,7 @@
                         <aside className="w-80 flex-none bg-white border-r border-slate-200 overflow-y-auto p-6 hidden md:block">
                             <div className="mb-8 px-2">
                                 <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">학습 로드맵</h2>
-                                <p className="text-xs text-slate-500 font-medium leading-relaxed break-keep">기초부터 심화까지, 입문자를 위해 설계된 난이도별 로드맵입니다.</p>
+                                <p className="text-xs text-slate-500 font-medium leading-relaxed break-keep">빅쿼리(BigQuery) 표준에 최적화된 난이도별 커리큘럼입니다.</p>
                             </div>
                             <nav className="space-y-2">
                                 {STEPS_DATA.map((item) => (
@@ -418,7 +394,7 @@
                                                     <Icon name="check-square" size={24} />
                                                 </div>
                                                 <div className="space-y-1 text-left">
-                                                    <h5 className="font-black text-slate-900 text-lg leading-none pt-1">논리 점검 (Logic Check)</h5>
+                                                    <h5 className="font-black text-slate-900 text-lg leading-none pt-1">체크 포인트 (Check Point)</h5>
                                                     <p className="text-slate-600 text-base leading-relaxed break-keep">
                                                         {currentData.checkpoint}
                                                     </p>
@@ -458,7 +434,7 @@
                                                                 <thead className="bg-slate-100 border-b border-slate-200">
                                                                     <tr>
                                                                         {Object.keys(rows[0]).map(k => (
-                                                                            <th key={k} className="px-4 py-3 font-bold text-slate-500 uppercase whitespace-nowrap">{k}</th>
+                                                                            <th key={k} className="px-4 py-3 font-bold text-slate-500 uppercase whitespace-nowrap text-center">{k}</th>
                                                                         ))}
                                                                     </tr>
                                                                 </thead>
@@ -466,7 +442,7 @@
                                                                     {rows.map((row, i) => (
                                                                         <tr key={i}>
                                                                             {Object.values(row).map((v, j) => (
-                                                                                <td key={j} className="px-4 py-3 text-slate-600 whitespace-nowrap">{v}</td>
+                                                                                <td key={j} className={`px-4 py-3 text-slate-600 whitespace-nowrap ${getAlignmentClass(v)}`}>{v}</td>
                                                                             ))}
                                                                         </tr>
                                                                     ))}
@@ -503,7 +479,7 @@
 
                                                         <div className="bg-slate-900 rounded-3xl p-6 text-blue-300 shadow-inner relative overflow-hidden min-h-[160px]">
                                                             <div className="text-[10px] font-bold text-slate-500 mb-3 flex items-center justify-between">
-                                                                <span>쿼리 에디터</span>
+                                                                <span>쿼리 에디터 (BigQuery)</span>
                                                                 <Icon name="code" size={14} className="opacity-30" />
                                                             </div>
                                                             <pre className="text-sm font-mono leading-relaxed overflow-x-auto whitespace-pre">
@@ -524,7 +500,7 @@
                                                         <thead className="bg-slate-50 border-b border-slate-200">
                                                             <tr>
                                                                 {Object.keys(currentData.mockResult[0]).map(key => (
-                                                                    <th key={key} className="px-4 py-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider whitespace-nowrap">{key}</th>
+                                                                    <th key={key} className="px-4 py-3 font-bold text-slate-500 uppercase text-[10px] tracking-wider whitespace-nowrap text-center">{key}</th>
                                                                 ))}
                                                             </tr>
                                                         </thead>
@@ -532,7 +508,7 @@
                                                             {currentData.mockResult.map((row, idx) => (
                                                                 <tr key={idx} className="bg-white">
                                                                     {Object.values(row).map((val, i) => (
-                                                                        <td key={i} className="px-4 py-3 text-slate-700 font-mono text-xs whitespace-nowrap">{val}</td>
+                                                                        <td key={i} className={`px-4 py-3 text-slate-700 font-mono text-xs whitespace-nowrap ${getAlignmentClass(val)}`}>{val}</td>
                                                                     ))}
                                                                 </tr>
                                                             ))}
