@@ -25,23 +25,6 @@
         .content-scroll { scroll-behavior: smooth; }
         .text-balance { text-wrap: balance; }
         .break-keep { word-break: keep-all; }
-        
-        /* Venn Diagram Styles */
-        .venn-container { position: relative; width: 220px; height: 140px; margin: 0 auto; }
-        .venn-circle-base { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid #cbd5e1; background: #fff; transition: all 0.3s ease; z-index: 1; }
-        .venn-circle-a { left: 0; top: 10px; }
-        .venn-circle-b { right: 0; top: 10px; }
-        .join-active-fill { background-color: #3b82f6 !important; opacity: 0.6 !important; }
-        
-        /* Intersection clipping layer */
-        .venn-intersection { position: absolute; left: 50px; top: 10px; width: 70px; height: 120px; overflow: hidden; z-index: 2; }
-        .intersection-fill { position: absolute; left: -50px; width: 120px; height: 120px; border-radius: 50%; background-color: #3b82f6; opacity: 0; transition: opacity 0.3s ease; }
-        
-        /* Text Labels layer */
-        .venn-label { position: absolute; top: 0; width: 120px; height: 140px; display: flex; align-items: center; justify-content: center; z-index: 10; pointer-events: none; font-size: 12px; font-weight: 800; }
-        .label-a { left: 0; color: #1e40af; }
-        .label-b { right: 0; color: #64748b; }
-        .label-active-text { color: #ffffff !important; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 leading-relaxed overflow-hidden">
@@ -269,6 +252,30 @@
             },
             {
                 step: 9,
+                title: "쿼리 안에 쿼리 넣기",
+                grammar: "Subquery",
+                subtitle: "동적인 값을 조건으로 활용하기",
+                theory: "다른 쿼리의 결과를 조건(WHERE) 등에 바로 씁니다.\n\n괄호() 안의 쿼리가 먼저 실행되어 바깥 쿼리에 값을 전달합니다.",
+                checkpoint: "서브쿼리가 너무 깊어지면 유지보수가 매우 힘들어집니다. 2단계 이상의 중첩은 가급적 WITH 문으로 전환을 고려하세요.",
+                targetTable: "all_employees",
+                sourceData: {
+                    "all_employees": [
+                        { name: 'Kim', sal: 5000 },
+                        { name: 'Lee', sal: 3000 },
+                        { name: 'Park', sal: 7000 }
+                    ]
+                },
+                goal: "평균 급여보다 많이 받는 직원 찾기",
+                logicDetail: "1) 서브쿼리(괄호 안)를 통해 전체 직원 급여 평균을 구하고, 2) 그 값보다 큰 급여를 받는 직원의 이름을 필터링합니다.",
+                example: "SELECT name \nFROM all_employees \nWHERE sal > (SELECT AVG(sal) FROM all_employees);",
+                mockResult: [
+                    { name: 'Kim' },
+                    { name: 'Park' }
+                ],
+                icons: "box"
+            },
+            {
+                step: 10,
                 title: "중복 제거 및 순번",
                 grammar: "ROW_NUMBER & QUALIFY",
                 subtitle: "최신 데이터 1건 고르기",
@@ -319,7 +326,7 @@
             const [activeStep, setActiveStep] = useState(1);
             const currentData = STEPS_DATA.find(item => item.step === activeStep);
 
-            // 데이터 타입에 따른 정렬 클래스 반환 함수
+            // 데이터 타입에 따른 정렬 클래스 반환 함수 (숫자 좌측, 문자 우측)
             const getAlignmentClass = (val) => {
                 if (typeof val === 'number') return 'text-left';
                 return 'text-right';
@@ -446,7 +453,7 @@
                                                             <Icon name="database" size={12} />
                                                             테이블명 : "{tableName}"
                                                         </h5>
-                                                        <div className="border border-slate-200 rounded-2xl overflow-x-auto bg-slate-50/50">
+                                                        <div className="border border-slate-100 rounded-2xl overflow-x-auto bg-slate-50/50">
                                                             <table className="min-w-full text-xs text-left border-collapse">
                                                                 <thead className="bg-slate-100 border-b border-slate-200">
                                                                     <tr>
