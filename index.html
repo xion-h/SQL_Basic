@@ -322,14 +322,16 @@
                   throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 결과창 렌더링을 지원하지 않습니다.");
               }
         
-              // 가상 DB 생성 로직을 완전히 제거하고, 기본 공간(alasql default db)에서 테이블만 드랍 후 재생성하도록 변경하여 메모리 충돌(already exists) 원천 차단
-              alasql.databases.alasql.tables = {};
-              if (alasql.databases.bq) {
-                  delete alasql.databases.bq;
-              }
-              
+              // 엔진 내부 객체 강제 초기화 제거 (undefined 에러 원인)
+              // 가장 안전한 표준 방식으로 기존 테이블을 확실하게 드롭(DROP) 후 재생성합니다.
               Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
-                  alasql(`CREATE TABLE IF NOT EXISTS ${tbl}`);
+                  alasql(`DROP TABLE IF EXISTS ${tbl}`);
+                  alasql(`CREATE TABLE ${tbl}`);
+                  
+                  // 엔진 내부 테이블 참조를 보장하는 방어 로직 추가
+                  if (!alasql.tables[tbl]) {
+                      alasql.tables[tbl] = { data: [] };
+                  }
                   alasql.tables[tbl].data = rows;
               });
               
