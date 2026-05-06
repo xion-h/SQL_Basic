@@ -322,12 +322,9 @@
                   throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 결과창 렌더링을 지원하지 않습니다.");
               }
         
-              // 엔진 초기화 시 기존 데이터베이스 완전 삭제 후 재생성 (already exists 오류 해결)
-              alasql('DROP DATABASE IF EXISTS bq');
-              alasql('CREATE DATABASE bq');
-              alasql('USE bq');
-              
+              // 가상 DB 생성 로직을 제거하고, 기본 공간에서 테이블만 드랍 후 재생성하도록 변경하여 메모리 충돌 원천 차단
               Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
+                  alasql(`DROP TABLE IF EXISTS ${tbl}`);
                   alasql(`CREATE TABLE ${tbl}`);
                   alasql.tables[tbl].data = rows;
               });
