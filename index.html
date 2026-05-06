@@ -307,10 +307,11 @@
           if (!input.endsWith(';')) return { success: false, error: "문법 오류 (Syntax error): 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
           if (input.includes('"')) return { success: false, error: "문법 오류 (Syntax error): 문자열에는 쌍따옴표가 아닌 작은따옴표(')를 사용해야 합니다." };
           
-          const isCorrect = normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(';', '').trim();
+          const isStringCorrect = normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(';', '').trim();
           
           let executedData = null;
           let executionError = null;
+          let isDataCorrect = false;
           
           try {
               let sqlForAlasql = input.trim()
@@ -321,26 +322,34 @@
                   throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 결과창 렌더링을 지원하지 않습니다.");
               }
         
-              alasql('CREATE DATABASE IF NOT EXISTS bq');
+              // 엔진 초기화 시 기존 데이터베이스 완전 삭제 후 재생성 (already exists 오류 해결)
+              alasql('DROP DATABASE IF EXISTS bq');
+              alasql('CREATE DATABASE bq');
               alasql('USE bq');
+              
               Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
-                  alasql(`DROP TABLE IF EXISTS ${tbl}`);
                   alasql(`CREATE TABLE ${tbl}`);
                   alasql.tables[tbl].data = rows;
               });
               
               executedData = alasql(sqlForAlasql);
+              
+              // 결과 데이터가 정답 데이터와 완벽히 일치하는지 확인 (별칭이 달라도 로직이 맞으면 정답 처리)
+              if (executedData && currentEx.res) {
+                  isDataCorrect = JSON.stringify(executedData) === JSON.stringify(currentEx.res);
+              }
           } catch (err) {
               executionError = "가상 엔진 실행 한계: " + err.message;
           }
           
-          if (isCorrect) {
-            return { success: true, data: currentEx.res };
+          // 정답 조건: 지정된 답안과 문자열이 일치하거나 OR 쿼리 결과 데이터가 정확히 일치할 때
+          if (isStringCorrect || isDataCorrect) {
+            return { success: true, data: isDataCorrect ? executedData : currentEx.res };
           } else {
             return { 
                 success: false, 
                 data: executedData && executedData.length > 0 ? executedData : (executedData ? [] : null), 
-                error: executionError || "오답입니다. 아래 작성하신 쿼리의 실행 결과를 확인하고 목표에 맞게 수정해보세요." 
+                error: executionError || "오답입니다. 작성하신 쿼리의 실행 결과가 목표(추출 컬럼 및 조건)와 다릅니다. 오타나 띄어쓰기를 확인하세요." 
             };
           }
         };
