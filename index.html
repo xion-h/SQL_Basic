@@ -215,28 +215,51 @@
             step: 6,
             title: "테이블 합치기",
             grammar: "JOIN",
-            subtitle: "분산된 데이터의 결합",
-            theory: "서로 다른 테이블에 흩어진 정보를 공통된 연결 고리(ID 등)를 기준으로 하나로 모읍니다.\n\n[LEFT JOIN (왼쪽 기준)]\nA 테이블의 모든 데이터를 보존하고, B 테이블의 데이터를 매칭합니다. 매칭되지 않으면 빈칸(NULL)이 됩니다. 데이터 유실을 막기 위해 실무에서 가장 많이 쓰입니다.\n\n[INNER JOIN (교집합)]\n양쪽 테이블 모두에 공통으로 존재하는 데이터만 남깁니다. 한쪽에만 있는 데이터는 사라집니다.\n\n[FULL OUTER JOIN (합집합)]\n양쪽 테이블의 모든 데이터를 보존하며, 한쪽에만 있는 데이터의 빈자리는 NULL로 채웁니다.\n\n[사용 방법]\nSELECT a.컬럼, b.컬럼 \nFROM 테이블A AS a \nLEFT JOIN 테이블B AS b \n  ON a.키 = b.키\n;",
-            checkpoint: "JOIN 시 1:N 관계로 인해 데이터가 뻥튀기(Fan-out)될 수 있습니다. 테이블 간의 관계(키가 유일한지)를 먼저 파악하세요.",
+            subtitle: "분산된 데이터의 결합과 1:N 관계",
+            theory: "서로 다른 테이블에 흩어진 정보를 공통된 연결 고리(ID 등)를 기준으로 하나로 모읍니다.\n\n[JOIN의 1:N 뻥튀기(Fan-out) 현상]\nA테이블에 아이디가 1개인데, B테이블에 같은 아이디가 3개 있다면? JOIN 결과는 3줄로 늘어납니다. 데이터 분석 시 가장 흔한 실수이므로, 반드시 1:1 관계인지 1:N 관계인지 확인해야 합니다.\n\n[JOIN 유형별 실제 예시]\n<div class='flex flex-wrap gap-6 my-6'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-48'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>주문내역 (A)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>주문ID</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>유저</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='px-4 py-2 text-center font-bold text-blue-600'>유저A</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='px-4 py-2 text-center text-slate-600'>유저B</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-56'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>접속기록 (B)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>유저</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>유저C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div></div>\n1. LEFT JOIN (A의 모든 데이터 보존)\n유저A의 접속기록이 2개이므로 주문1이 2줄로 뻥튀기됩니다. B에 없는 유저B의 접속기록은 NULL이 됩니다.\n<div class='my-4 border border-blue-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>주문ID</th><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-blue-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr></tbody></table></div>\n2. INNER JOIN (양쪽에 모두 있는 교집합)\n양쪽에 모두 존재하는 유저A의 데이터만 뻥튀기되어 남습니다.\n<div class='my-4 border border-emerald-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-emerald-50 border-b border-emerald-100'><tr><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>주문ID</th><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-emerald-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr></tbody></table></div>\n3. FULL OUTER JOIN (합집합)\n어느 한쪽에만 있는 유저B와 유저C의 데이터도 모두 빈칸(NULL)을 채워 남깁니다.\n<div class='my-4 border border-purple-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-purple-50 border-b border-purple-100'><tr><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>주문ID</th><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-purple-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div>",
+            checkpoint: "JOIN 시 기준 키에 중복이 있으면 데이터가 뻥튀기(Fan-out)될 수 있습니다. 테이블 간의 관계(키가 유일한지)를 먼저 파악하세요.",
             targetTable: "orders & users",
             exampleData: { 
-              "orders (A)": [{ o_id: 1, u_id: "A" }, { o_id: 2, u_id: "B" }], 
-              "users (B)": [{ u_id: "A", name: "철수" }, { u_id: "C", name: "영희" }] 
+              "orders (A)": [
+                { o_id: 1, u_id: "A", item: "TV" }, 
+                { o_id: 2, u_id: "A", item: "PC" },
+                { o_id: 3, u_id: "B", item: "Phone" },
+                { o_id: 4, u_id: "X", item: "Mouse" }
+              ], 
+              "users (B)": [
+                { u_id: "A", name: "철수" }, 
+                { u_id: "B", name: "영희" },
+                { u_id: "C", name: "민수" }
+              ] 
             },
             exerciseData: { 
-              "orders": [{ o_id: 1, u_id: "A", item: "TV" }, { o_id: 2, u_id: "B", item: "Phone" }, { o_id: 3, u_id: "C", item: "Watch" }], 
-              "users": [{ u_id: "A", name: "철수" }, { u_id: "B", name: "민수" }, { u_id: "D", name: "영희" }] 
+              "orders": [
+                { o_id: 1, u_id: "A", item: "TV", amt: 100 }, 
+                { o_id: 2, u_id: "A", item: "PC", amt: 200 }, 
+                { o_id: 3, u_id: "B", item: "Phone", amt: 50 },
+                { o_id: 4, u_id: "X", item: "Mouse", amt: 10 }
+              ], 
+              "users": [
+                { u_id: "A", name: "철수", tier: "VIP" }, 
+                { u_id: "B", name: "영희", tier: "Gold" }, 
+                { u_id: "C", name: "민수", tier: "Silver" }
+              ] 
             },
-            goal: "LEFT JOIN으로 주문 내역에 고객 이름을 붙여 출력 (B에 없는 C는 NULL 처리됨)",
-            logicDetail: "orders(a) 테이블을 훼손하지 않기 위해 LEFT JOIN을 사용하여 users(b) 테이블을 u_id 기준으로 결합합니다.",
-            example: "SELECT \n  a.o_id, \n  b.name \nFROM `orders (A)` a \nLEFT JOIN `users (B)` b \n  ON a.u_id = b.u_id\n;",
-            mockResult: [{ o_id: 1, name: '철수' }, { o_id: 2, name: 'NULL' }],
+            goal: "주문 내역(A)에 고객 이름(B)을 붙여 조회하세요.\n※ 주의: 기준이 되는 주문 데이터가 유실되면 안 되므로 LEFT JOIN을 사용해야 합니다.\n※ B에 없는 X 고객의 주문은 name이 NULL로 처리됩니다.",
+            logicDetail: "매출(orders) 데이터를 누락 없이 보존하는 것이 핵심입니다. 따라서 orders를 왼쪽에 두고 LEFT JOIN을 사용하여 users 테이블을 결합합니다. 이때 users에 없는 'X'의 데이터는 NULL로 채워집니다.",
+            example: "SELECT \n  a.o_id, \n  a.item,\n  b.name \nFROM `orders (A)` a \nLEFT JOIN `users (B)` b \n  ON a.u_id = b.u_id\n;",
+            mockResult: [
+              { o_id: 1, item: "TV", name: '철수' }, 
+              { o_id: 2, item: "PC", name: '철수' }, 
+              { o_id: 3, item: "Phone", name: '영희' }, 
+              { o_id: 4, item: "Mouse", name: null }
+            ],
             exercises: [
-              { id: 1, goal: "orders(왼쪽)와 users(오른쪽)를 u_id 기준으로 LEFT JOIN 하세요.", target: "* (A, B 전체)", answer: "SELECT * FROM orders a LEFT JOIN users b ON a.u_id = b.u_id;", res: [{o_id:1, u_id:'A', item:'TV', name:'철수'},{o_id:2, u_id:'B', item:'Phone', name:'민수'},{o_id:3, u_id:'C', item:'Watch', name:null}], hint: "LEFT JOIN ... ON a.u_id = b.u_id" },
-              { id: 2, goal: "INNER JOIN을 사용하여 양쪽 테이블에 모두 u_id가 존재하는 데이터만 결합하세요.", target: "*", answer: "SELECT * FROM orders a INNER JOIN users b ON a.u_id = b.u_id;", res: [{o_id:1, u_id:'A', item:'TV', name:'철수'},{o_id:2, u_id:'B', item:'Phone', name:'민수'}], hint: "INNER JOIN 키워드를 사용하세요." },
-              { id: 3, goal: "FULL OUTER JOIN을 사용하여 양쪽 테이블의 모든 데이터를 누락 없이 합치세요.", target: "*", answer: "SELECT * FROM orders a OUTER JOIN users b ON a.u_id = b.u_id;", res: [{o_id:1, u_id:'A', item:'TV', name:'철수'},{o_id:2, u_id:'B', item:'Phone', name:'민수'},{o_id:3, u_id:'C', item:'Watch', name:null},{o_id:null, u_id:'D', item:null, name:'영희'}], hint: "FULL OUTER JOIN을 사용하세요." },
-              { id: 4, goal: "LEFT JOIN 후, name이 비어있는(NULL) 데이터만 조회하세요.", target: "*", answer: "SELECT * FROM orders a LEFT JOIN users b ON a.u_id = b.u_id WHERE b.name IS NULL;", res: [{o_id:3, u_id:'C', item:'Watch', name:null}], hint: "JOIN 구문 뒤에 WHERE b.name IS NULL을 붙이세요." },
-              { id: 5, goal: "LEFT JOIN을 수행하고, 별칭을 활용하여 주문번호(o_id)와 유저이름(name)만 조회하세요.", target: "o_id, name", answer: "SELECT a.o_id, b.name FROM orders a LEFT JOIN users b ON a.u_id = b.u_id;", res: [{o_id:1, name:'철수'},{o_id:2, name:'민수'},{o_id:3, name:null}], hint: "SELECT a.o_id, b.name" }
+              { id: 1, goal: "[LEFT JOIN] 매출 검증을 위해 모든 주문 내역(orders)을 누락 없이 조회하되, 각 주문을 한 고객의 정보(users)를 붙여서 확인하려고 합니다. 전체 컬럼을 조회해 주세요.", target: "* (A, B 전체)", answer: "SELECT * FROM orders a LEFT JOIN users b ON a.u_id = b.u_id;", res: [{o_id:1, u_id:'A', item:'TV', amt:100, name:'철수', tier:'VIP'},{o_id:2, u_id:'A', item:'PC', amt:200, name:'철수', tier:'VIP'},{o_id:3, u_id:'B', item:'Phone', amt:50, name:'영희', tier:'Gold'},{o_id:4, u_id:'X', item:'Mouse', amt:10, name:null, tier:null}], hint: "FROM orders a LEFT JOIN users b ON a.u_id = b.u_id" },
+              { id: 2, goal: "[INNER JOIN] 고객의 등급(tier)에 따른 구매 패턴을 분석하려 합니다. 회원 정보가 유효하게 남아있는 정상 회원의 주문 건만 남기도록 결합해 주세요.", target: "*", answer: "SELECT * FROM orders a INNER JOIN users b ON a.u_id = b.u_id;", res: [{o_id:1, u_id:'A', item:'TV', amt:100, name:'철수', tier:'VIP'},{o_id:2, u_id:'A', item:'PC', amt:200, name:'철수', tier:'VIP'},{o_id:3, u_id:'B', item:'Phone', amt:50, name:'영희', tier:'Gold'}], hint: "INNER JOIN 키워드를 사용하세요." },
+              { id: 3, goal: "[OUTER JOIN] 주문 내역과 회원 원장을 대조하는 감사(Audit) 작업을 수행 중입니다. 주문이 없는 회원과 회원 정보가 없는 주문까지, 양쪽 데이터 단 하나도 빠짐없이 합쳐서 보여주세요.", target: "*", answer: "SELECT * FROM orders a OUTER JOIN users b ON a.u_id = b.u_id;", res: [{o_id:1, u_id:'A', item:'TV', amt:100, name:'철수', tier:'VIP'},{o_id:2, u_id:'A', item:'PC', amt:200, name:'철수', tier:'VIP'},{o_id:3, u_id:'B', item:'Phone', amt:50, name:'영희', tier:'Gold'},{o_id:4, u_id:'X', item:'Mouse', amt:10, name:null, tier:null},{o_id:null, u_id:null, item:null, amt:null, name:'민수', tier:'Silver'}], hint: "가상 엔진 지원을 위해 FULL OUTER JOIN 대신 OUTER JOIN을 사용하세요." },
+              { id: 4, goal: "[NULL 찾기] 보안팀의 요청입니다. 주문은 발생했는데 회원 테이블(users)에 정보가 존재하지 않는(탈퇴 등) '비정상 주문 건'만 찾아내 주세요.", target: "*", answer: "SELECT * FROM orders a LEFT JOIN users b ON a.u_id = b.u_id WHERE b.name IS NULL;", res: [{o_id:4, u_id:'X', item:'Mouse', amt:10, name:null, tier:null}], hint: "LEFT JOIN 구문 뒤에 WHERE b.name IS NULL 을 추가하여 오른쪽 테이블에 없는 데이터를 찾습니다." },
+              { id: 5, goal: "[종합 예제] 고객별 총 구매액을 구하려고 합니다. orders와 users를 INNER JOIN 한 뒤, 고객 이름(name)을 기준으로 구매액(amt)의 총합(SUM)을 구하고 큰 순서대로 정렬(DESC)해 주세요.", target: "name, SUM(amt)", answer: "SELECT b.name, SUM(a.amt) FROM orders a INNER JOIN users b ON a.u_id = b.u_id GROUP BY b.name ORDER BY 2 DESC;", res: [{name:'철수', 'sum(a.amt)':300},{name:'영희', 'sum(a.amt)':50}], hint: "INNER JOIN 후 GROUP BY b.name 으로 묶고, ORDER BY 2 DESC 로 정렬합니다." }
             ]
           },
           {
@@ -411,7 +434,8 @@
             if (index > 0 && parts[index - 1].startsWith('[')) {
               textContent = textContent.replace(/^\n+/, '');
             }
-            return <span key={index}>{textContent}</span>;
+            // 텍스트 내에 포함된 HTML 태그(table 등)를 안전하게 렌더링
+            return <span key={index} dangerouslySetInnerHTML={{ __html: textContent }} />;
           });
         };
 
