@@ -603,4 +603,353 @@
             { id: 'C_005', name: '정다은', age: 31, city: '인천', join_date: 20260310 }
           ],
           Subscriptions: [
-            { sub_id: 'S_1
+            { sub_id: 'S_101', id: 'C_001', plan_id: 'P_01', status: 'Active' },
+            { sub_id: 'S_102', id: 'C_002', plan_id: 'P_02', status: 'Churned' },
+            { sub_id: 'S_103', id: 'C_004', plan_id: 'P_01', status: 'Active' }
+          ],
+          Plans: [
+            { plan_id: 'P_01', plan_name: '5G 프리미어 에센셜', price: 85000 },
+            { plan_id: 'P_02', plan_name: '5G 스탠다드', price: 75000 },
+            { plan_id: 'P_03', plan_name: '(LTE) 추가 요금 데이터 69', price: 69000 }
+          ]
+        };
+
+        const App = () => {
+          const [view, setView] = useState('theory'); // intro, structure, theory, practical
+          const [activeStep, setActiveStep] = useState(0);
+          const [exerciseIdx, setExerciseIdx] = useState(0);
+          const [userQuery, setUserQuery] = useState('');
+          const [engineResult, setEngineResult] = useState(null);
+
+          const [pracStep, setPracStep] = useState(0);
+          const [pracQuery, setPracQuery] = useState('');
+          const [pracResult, setPracResult] = useState(null);
+
+          const currentData = STEPS_DATA[activeStep] || STEPS_DATA[0];
+          const currentPrac = PRACTICAL_DATA[pracStep];
+          const getAlignmentClass = (val) => (typeof val === 'number' ? 'text-left' : 'text-right');
+
+          return (
+            <div className="app-container">
+              <nav className="nav-bar">
+                <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView('intro')}>
+                  <div className="bg-slate-900 p-2.5 rounded-2xl text-white shadow-lg"><Icon name="terminal" size={24} /></div>
+                  <div><h1 className="text-xl font-black leading-none">SQL MASTER</h1><span className="text-[10px] font-black text-blue-600 uppercase">이론편</span></div>
+                </div>
+                <div className="flex items-center gap-10">
+                  <button onClick={() => setView('structure')} className={`text-[15px] font-black transition-colors ${view === 'structure' ? 'text-blue-600 underline underline-offset-8 decoration-2' : 'text-slate-500'}`}>구조</button>
+                  <button onClick={() => setView('theory')} className={`text-[15px] font-black transition-colors ${view === 'theory' ? 'text-blue-600 underline underline-offset-8 decoration-2' : 'text-slate-500'}`}>이론 및 실습</button>
+                  <button onClick={() => setView('practical')} className={`text-[15px] font-black transition-colors ${view === 'practical' ? 'text-blue-600 underline underline-offset-8 decoration-2' : 'text-slate-500'}`}>실무 적용</button>
+                </div>
+                <div className="w-32 flex justify-end">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-xl">
+                    <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-blue-600 shadow-sm"><Icon name="user" size={12} /></div>
+                    <span className="text-[11px] font-bold text-slate-600">Guest</span>
+                  </div>
+                </div>
+              </nav>
+
+              <div className="main-wrapper">
+                
+                {/* 1. 인트로 */}
+                {view === 'intro' && (
+                  <div className="content flex flex-col justify-center items-center h-full pb-0 bg-white">
+                    <div className="inline-flex items-center gap-3 bg-blue-50 text-blue-600 px-5 py-2 rounded-full text-[13px] font-black tracking-widest border border-blue-100 shadow-sm mb-10"><Icon name="sparkles" size={16} /> 실전형 SQL 커리큘럼</div>
+                    <h1 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter text-center leading-tight mb-8">데이터 분석의 기초</h1>
+                    <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed font-medium text-center break-keep">엑셀의 한계를 넘어 데이터의 흐름을 논리적으로 이해하는 과정입니다.<br />단순 암기가 아닌 실무 중심 11단계 커리큘럼을 시작하세요.</p>
+                  </div>
+                )}
+
+                {/* 2. 구조 */}
+                {view === 'structure' && (
+                  <div className="content pt-12">
+                    <div className="max-w-6xl mx-auto space-y-16 animate-in fade-in duration-1000 pb-32">
+                      <div className="text-center space-y-4"><h2 className="text-4xl font-black text-slate-900">칸(Cell)의 엑셀 vs 집합(Set)의 SQL</h2><p className="text-slate-500 text-xl font-medium">도구의 변화가 분석의 질을 결정합니다.</p></div>
+                      
+                      <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-stretch">
+                        <div className="bg-white p-12 rounded-[3rem] border-2 border-slate-100 shadow-sm flex flex-col h-full hover:border-emerald-200 transition-colors">
+                          <div className="flex items-center gap-3 text-emerald-600 font-black text-2xl mb-8"><Icon name="table" size={28}/> <span>Excel : 시각 중심</span></div>
+                          <div className="flex-grow space-y-6 text-slate-600 text-lg font-medium">
+                            <div className="flex gap-3"><Icon name="check-square" className="text-emerald-500 flex-none mt-1" size={24}/> <span><b>개별 조작:</b> 특정 셀의 값을 직접 수정하는 수작업 방식입니다.</span></div>
+                            <div className="flex gap-3"><Icon name="check-square" className="text-emerald-500 flex-none mt-1" size={24}/> <span><b>용량 한계:</b> 100만 행 이상은 처리 속도가 급격히 저하됩니다.</span></div>
+                          </div>
+                          <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 text-sm font-mono text-slate-400 mt-10">=VLOOKUP(A2, 'Info'!A:D, 3, 0)</div>
+                        </div>
+                        
+                        <div className="bg-white p-12 rounded-[3rem] border-2 border-blue-100 shadow-xl shadow-blue-50 flex flex-col h-full relative overflow-hidden hover:border-blue-400 transition-colors">
+                          <div className="absolute -top-10 -right-10 opacity-5 text-blue-600"><Icon name="database" size={200}/></div>
+                          <div className="flex items-center gap-3 text-blue-600 font-black text-2xl mb-8"><Icon name="database" size={28}/> <span>SQL : 논리 중심</span></div>
+                          <div className="flex-grow space-y-6 text-slate-600 text-lg font-medium z-10 relative">
+                            <div className="flex gap-3"><Icon name="check-square" className="text-blue-500 flex-none mt-1" size={24}/> <span><b>집합 조작:</b> 수억 줄의 데이터를 동시에 조건부 일괄 처리합니다.</span></div>
+                            <div className="flex gap-3"><Icon name="check-square" className="text-blue-500 flex-none mt-1" size={24}/> <span><b>무한 용량:</b> 빅쿼리는 페타바이트급 데이터도 초 단위로 연산합니다.</span></div>
+                          </div>
+                          <div className="bg-slate-900 p-8 rounded-2xl border border-slate-700 text-sm font-mono text-blue-300 mt-10 z-10 relative">SELECT <br/>&nbsp;&nbsp;category, <br/>&nbsp;&nbsp;SUM(price) <br/>FROM orders <br/>GROUP BY 1 <br/>;</div>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900 rounded-[3rem] p-12 text-slate-300 space-y-8 shadow-2xl relative overflow-hidden mt-16">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-emerald-400"></div>
+                        <h3 className="text-3xl font-black text-white flex items-center gap-3"><Icon name="book-open" size={32}/> 엑셀 유저를 위한 DB 필수 용어 매칭</h3>
+                        <p className="text-base font-medium leading-relaxed max-w-3xl">엑셀의 작업 환경이 데이터베이스(DB)에서는 어떻게 불리는지 이해하면 SQL이 훨씬 쉬워집니다.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
+                          <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700"><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 파일 / 시트</div><div className="text-white font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Table (테이블)</div><p className="text-sm text-slate-400 leading-snug">데이터가 담겨 있는 가장 큰 보관 단위입니다.</p></div>
+                          <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700"><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 열 (A, B, C...)</div><div className="text-white font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Column (컬럼/열)</div><p className="text-sm text-slate-400 leading-snug">데이터의 속성(이름, 나이 등)을 나타내는 세로 줄입니다.</p></div>
+                          <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700"><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 행 (1, 2, 3...)</div><div className="text-white font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Row (로우/행)</div><p className="text-sm text-slate-400 leading-snug">개별 사용자나 주문 등 1건의 데이터를 나타내는 가로 줄입니다.</p></div>
+                          <div className="bg-blue-900/40 p-6 rounded-2xl border border-blue-500/50 relative overflow-hidden"><div className="absolute top-3 right-3 text-blue-400"><Icon name="key" size={20}/></div><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 셀 서식</div><div className="text-blue-300 font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Schema (스키마)</div><p className="text-sm text-blue-100 leading-snug"><b>매우 중요!</b> 데이터의 타입(문자, 숫자 등)을 강제하는 '설계도'입니다. 엑셀과 달리 스키마를 어기면 데이터가 입력되지 않아 오류를 원천 차단합니다.</p></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. 이론 및 실습 */}
+                {view === 'theory' && (
+                  <React.Fragment>
+                    <aside className="sidebar">
+                      <div className="space-y-2 pb-10">
+                        <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">11-Step 로드맵</h2>
+                        {STEPS_DATA.map((s, i) => (
+                          <button key={i} onClick={() => { setActiveStep(i); setExerciseIdx(0); setUserQuery(''); setEngineResult(null); document.getElementById('mainContentScroll').scrollTop = 0; }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${activeStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'}`}>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-none ${activeStep === i ? 'bg-white/20' : 'bg-slate-100'}`}>{i + 1}</div>
+                            <div className="overflow-hidden leading-tight"><div className="text-[11px] font-black truncate">{s.title}</div><div className="text-[9px] font-bold opacity-70 mt-1 uppercase truncate">{s.grammar}</div></div>
+                          </button>
+                        ))}
+                      </div>
+                    </aside>
+
+                    <main className="content" id="mainContentScroll">
+                      <div className="max-w-4xl mx-auto space-y-16 animate-in fade-in duration-500 pb-40">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-blue-600 font-black text-[13px] uppercase tracking-wider"><Icon name="book-open" size={16} /> <span>Phase {currentData.step} 가이드</span></div>
+                          <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">{currentData.title}: <span className="text-blue-600">{currentData.grammar}</span></h2>
+                          <p className="text-xl text-slate-500 font-medium italic break-keep">"{currentData.subtitle}"</p>
+                        </div>
+                        
+                        <div className="bg-white rounded-[3rem] p-12 border-2 border-slate-100 shadow-sm space-y-10">
+                          <section className="space-y-2">
+                            <div className="flex items-center gap-3 mb-4"><div className="w-1.5 h-6 bg-blue-600 rounded-full"></div><h4 className="text-xl font-black text-slate-900">상세 이론 및 사용법</h4></div>
+                            <div className="text-slate-700 text-lg leading-relaxed font-medium whitespace-pre-wrap break-keep">
+                              {renderTheoryText(currentData.theory)}
+                            </div>
+                          </section>
+                          <section className="bg-blue-50/50 rounded-[2rem] p-8 border border-blue-100 flex items-start gap-5">
+                            <Icon name="check-square" size={28} className="text-blue-600 flex-none mt-1" />
+                            <div className="space-y-2"><h5 className="font-black text-slate-900 text-lg">체크 포인트 (Check Point)</h5><p className="text-slate-600 text-base leading-relaxed font-medium break-keep">{currentData.checkpoint}</p></div>
+                          </section>
+
+                          <div className="space-y-8 pt-8 border-t border-slate-100">
+                            <div className="flex items-center gap-3"><div className="w-1.5 h-6 bg-blue-600 rounded-full"></div><h4 className="text-xl font-black text-slate-900">실무 예제</h4></div>
+                            {Object.entries(currentData.exampleData).map(([name, rows]) => (
+                              <div key={name} className="space-y-3">
+                                <h5 className="text-[12px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Icon name="database" size={14} /> 테이블명 : "{name}"</h5>
+                                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm"><table className="min-w-full text-sm text-left border-collapse">
+                                  <thead className="bg-slate-50 border-b border-slate-200"><tr>{Object.keys(rows[0]).map(k => <th key={k} className="px-5 py-4 font-bold text-slate-500 text-center border-x border-slate-200">{k}</th>)}</tr></thead>
+                                  <tbody>{rows.map((row, i) => <tr key={i} className="border-b border-slate-100">{Object.values(row).map((v, j) => <td key={j} className={`px-5 py-3 text-slate-700 font-medium border-x border-slate-100 ${getAlignmentClass(v)}`}>{v}</td>)}</tr>)}</tbody>
+                                </table></div>
+                              </div>
+                            ))}
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-stretch">
+                              <div className="bg-slate-50 p-8 rounded-[2rem] border border-slate-200 flex flex-col justify-center space-y-4"><h5 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">구현 목표</h5><p className="text-slate-800 font-bold text-xl leading-snug break-keep">{currentData.goal}</p></div>
+                              <div className="bg-slate-900 rounded-[2rem] p-8 text-blue-300 shadow-xl flex flex-col justify-center">
+                                <div className="text-[11px] font-bold text-slate-500 mb-4 border-b border-slate-800 pb-3 flex items-center justify-between"><span>BigQuery Code Example</span><Icon name="code" size={16} className="opacity-30"/></div>
+                                <pre className="text-base leading-relaxed overflow-x-auto"><code>{currentData.example}</code></pre>
+                              </div>
+                            </div>
+                            <div className="bg-amber-50/50 rounded-2xl p-8 border border-amber-100 space-y-2"><h5 className="text-[11px] font-black text-amber-600 uppercase flex items-center gap-2"><Icon name="help-circle" size={16}/> 쿼리 의미 해석</h5><p className="text-slate-700 text-base font-medium leading-relaxed underline underline-offset-4 decoration-amber-200 break-keep">{currentData.logicDetail}</p></div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-8 pt-16 border-t-4 border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-1"><span className="text-amber-500 font-black text-[13px] uppercase tracking-widest">{activeStep + 1}단계 실전 미션</span><h2 className="text-4xl font-black text-slate-900 tracking-tight">연습 문제</h2></div>
+                            <div className="flex gap-2 flex-wrap justify-end">
+                              {currentData.exercises.map((_, idx) => (
+                                <button key={idx} onClick={() => { setExerciseIdx(idx); setUserQuery(''); setEngineResult(null); }} className={`px-4 py-2 mb-2 rounded-xl text-sm font-black transition-all ${exerciseIdx === idx ? 'bg-amber-500 text-white shadow-md' : 'bg-white border-2 border-slate-200 text-slate-400 hover:bg-amber-50'}`}>문제 {idx + 1}</button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="bg-white rounded-[3rem] p-12 border-2 border-slate-200 shadow-xl space-y-10">
+                            <div className="bg-amber-50 p-8 rounded-[2rem] border-2 border-amber-100 space-y-5">
+                              <h5 className="text-xs font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Icon name="sparkles" size={18} /> Mission Goal</h5>
+                              <p className="text-slate-900 font-black text-3xl leading-tight break-keep">{currentData.exercises[exerciseIdx].goal}</p>
+                              <div className="inline-flex items-center gap-3 pt-4 border-t border-amber-200/50">
+                                <span className="text-sm font-black text-rose-500 uppercase tracking-tight">[추출해야 할 컬럼]</span>
+                                <code className="bg-white px-4 py-1.5 rounded-lg text-base font-black text-slate-700 border-2 border-amber-200 shadow-sm">{currentData.exercises[exerciseIdx].target}</code>
+                              </div>
+                              <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                                <h6 className="text-[11px] font-black text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-1"><Icon name="check-circle" size={14} /> 정답 확인 (검증용)</h6>
+                                <pre className="text-sm font-mono text-slate-800 whitespace-pre-wrap"><code>{currentData.exercises[exerciseIdx].answer}</code></pre>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4">
+                              <h5 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-2"><Icon name="database" size={14} /> 연습문제 데이터 세트</h5>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(currentData.exerciseData).map(([name, rows]) => (
+                                  <div key={name} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                    <div className="bg-slate-200/50 px-4 py-3 text-[11px] font-black text-slate-600 border-b border-slate-200 uppercase text-center">Table: "{name}"</div>
+                                    <div className="overflow-x-auto"><table className="w-full text-[11px] text-left border-collapse">
+                                      <thead className="bg-white border-b border-slate-100"><tr>{Object.keys(rows[0]).map(k => <th key={k} className="px-4 py-2.5 font-bold text-slate-500 uppercase text-center border-x border-slate-100">{k}</th>)}</tr></thead>
+                                      <tbody>{rows.map((row, i) => <tr key={i} className="border-b border-slate-50">{Object.values(row).map((v, j) => <td key={j} className={`px-4 py-2.5 text-slate-600 font-medium border-x border-slate-100 ${getAlignmentClass(v)}`}>{v !== null ? String(v) : 'NULL'}</td>)}</tr>)}</tbody>
+                                    </table></div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-12 text-blue-300 relative shadow-inner">
+                              <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+                                <span className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="code" size={16}/> BigQuery Simulator</span>
+                                <button onClick={()=>{setEngineResult(bigQueryEngine(userQuery, currentData.exercises[exerciseIdx], currentData.exerciseData))}} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg">RUN QUERY <Icon name="play" size={14} fill="white" /></button>
+                              </div>
+                              <textarea className="w-full bg-transparent border-none focus:ring-0 font-mono text-xl h-48 resize-none placeholder-slate-700 leading-relaxed" placeholder="이곳에 쿼리를 작성하세요..." value={userQuery} onChange={(e)=>setUserQuery(e.target.value)} spellCheck="false" />
+                              
+                              {engineResult && (
+                                <div className={`mt-10 p-8 rounded-[2rem] border-2 animate-in zoom-in-95 duration-500 ${engineResult.success ? 'bg-emerald-50 border-emerald-500 text-slate-900' : 'bg-rose-50 border-rose-400 text-slate-900'}`}>
+                                  <div className="flex items-start gap-4 mb-6">
+                                    {engineResult.success ? <Icon name="check-square" size={32} className="text-emerald-500"/> : <Icon name="alert-circle" size={32} className="text-rose-500"/>}
+                                    <div className="text-base space-y-1 flex-1">
+                                      <p className={`font-black text-2xl ${engineResult.success ? 'text-emerald-600' : 'text-rose-600'}`}>{engineResult.success ? "정답입니다! (Correct Answer)" : "오답 (Incorrect)"}</p>
+                                      <p className={`font-medium ${engineResult.success ? 'text-slate-600' : 'text-rose-500'}`}>{engineResult.error || "작성하신 쿼리가 성공적으로 실행되었습니다. 아래 결과를 확인하세요."}</p>
+                                    </div>
+                                  </div>
+                                  {engineResult.data !== null && engineResult.data !== undefined && (
+                                    <div className={`mt-6 pt-8 border-t ${engineResult.success ? 'border-emerald-200' : 'border-rose-200'}`}>
+                                      <h5 className={`text-sm font-black uppercase mb-4 flex items-center gap-2 ${engineResult.success ? 'text-emerald-600' : 'text-rose-600'}`}><Icon name="table" size={16}/> 내가 작성한 쿼리의 실행 결과 (Result)</h5>
+                                      <div className={`overflow-x-auto rounded-2xl border-2 bg-white ${engineResult.success ? 'border-emerald-200' : 'border-rose-200'}`}>
+                                        <table className="min-w-full text-sm text-left border-collapse">
+                                          <thead className={`${engineResult.success ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'} border-b`}><tr>
+                                            {engineResult.data.length > 0 
+                                              ? Object.keys(engineResult.data[0]).map(k=><th key={k} className={`px-6 py-4 font-bold text-center border-x ${engineResult.success ? 'text-slate-600 border-emerald-100' : 'text-slate-600 border-rose-100'}`}>{k}</th>)
+                                              : <th className="px-6 py-4 font-bold text-center">Result</th>}
+                                          </tr></thead>
+                                          <tbody>
+                                            {engineResult.data.length > 0 
+                                              ? engineResult.data.map((row,i)=><tr key={i} className={`border-b ${engineResult.success ? 'border-emerald-50' : 'border-rose-50'}`}>{Object.values(row).map((v,j)=><td key={j} className={`px-6 py-4 text-slate-700 font-mono border-x ${engineResult.success ? 'border-emerald-50' : 'border-rose-50'} ${getAlignmentClass(v)}`}>{v !== null && v !== undefined ? String(v) : 'NULL'}</td>)}</tr>)
+                                              : <tr><td className="px-6 py-4 text-center text-slate-500 font-medium">조건에 맞는 데이터가 없습니다. (0 Rows)</td></tr>}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex justify-between items-center pt-2">
+                              <button onClick={() => alert(`힌트: ${currentData.exercises[exerciseIdx].hint}`)} className="text-slate-400 hover:text-blue-600 text-sm font-black flex items-center gap-2 transition-colors uppercase"><Icon name="help-circle" size={18}/> 힌트 보기</button>
+                              {engineResult && engineResult.success && (
+                                <button onClick={() => { if(exerciseIdx < currentData.exercises.length - 1) setExerciseIdx(exerciseIdx + 1); else if(activeStep < STEPS_DATA.length - 1) { setActiveStep(activeStep + 1); setExerciseIdx(0); document.getElementById('mainContentScroll').scrollTop = 0; } setUserQuery(''); setEngineResult(null); }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 문제 <Icon name="chevron-right" size={24}/></button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </main>
+                  </React.Fragment>
+                )}
+
+                {/* 4. 실무 적용 뷰 */}
+                {view === 'practical' && (
+                  <React.Fragment>
+                    <aside className="sidebar">
+                      <div className="space-y-2 pb-10">
+                        <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">Homework</h2>
+                        {PRACTICAL_DATA.map((s, i) => (
+                          <button key={i} onClick={() => { setPracStep(i); setPracQuery(''); setPracResult(null); document.getElementById('pracContentScroll').scrollTop = 0; }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${pracStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'}`}>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-none ${pracStep === i ? 'bg-white/20' : 'bg-slate-100'}`}>H{i + 1}</div>
+                            <div className="overflow-hidden leading-tight"><div className="text-[11px] font-black truncate">{s.title}</div><div className="text-[9px] font-bold opacity-70 uppercase mt-1 tracking-tighter">Business Logic</div></div>
+                          </button>
+                        ))}
+                      </div>
+                    </aside>
+
+                    <main className="content flex-1 overflow-y-auto p-6 lg:p-12 pb-40 bg-slate-50/50" id="pracContentScroll">
+                      <div className="max-w-5xl mx-auto space-y-16 animate-in fade-in duration-700 pb-20">
+                        <div className="space-y-4">
+                          <div className="inline-flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest bg-blue-50 px-4 py-2 rounded-full border border-blue-100"><Icon name="sparkles" size={14} /> <span>Practical Master Course</span></div>
+                          <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">실무 적용 과제 (Homework)</h2>
+                          <p className="text-xl text-slate-500 font-medium italic break-keep">비즈니스 상황에 대한 다중 테이블 결합 예제입니다.</p>
+                        </div>
+                        
+                        <div className="bg-white rounded-[3rem] p-10 md:p-12 border-2 border-slate-100 shadow-xl space-y-12">
+                          <div className="space-y-6">
+                            <h4 className="text-xl font-black flex items-center gap-2 text-slate-900"><div className="w-1.5 h-6 bg-blue-600 rounded-full"/>실무 환경 테이블</h4>
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                              {Object.entries(PRAC_TABLE_DATA).map(([tbl, rows]) => (
+                                <div key={tbl} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                  <div className="bg-slate-100 px-4 py-3 text-[11px] font-black text-slate-600 border-b border-slate-200">Table: {tbl}</div>
+                                  <div className="overflow-x-auto"><table className="min-w-full text-[10px] text-left border-collapse">
+                                    <thead className="bg-white border-b border-slate-100"><tr>{Object.keys(rows[0]).map(k=><th key={k} className="px-3 py-2 font-bold text-slate-500 border-x">{k}</th>)}</tr></thead>
+                                    <tbody>{rows.map((row, i)=><tr key={i} className="border-b border-slate-50">{Object.values(row).map((v,j)=><td key={j} className="px-3 py-2 text-slate-600 border-x font-mono">{v}</td>)}</tr>)}</tbody>
+                                  </table></div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="space-y-8 pt-8 border-t border-slate-100">
+                            <div className="bg-amber-50 p-8 rounded-2xl border-2 border-amber-100 space-y-5">
+                              <h5 className="text-sm font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Icon name="sparkles" size={18} /> 비즈니스 시나리오</h5>
+                              <p className="text-slate-900 font-black text-2xl leading-tight break-keep">{currentPrac.title}</p>
+                              <p className="text-slate-700 text-lg font-medium leading-relaxed bg-white/60 p-4 rounded-xl border border-amber-200/50 break-keep">{currentPrac.scenario}</p>
+                              <div className="inline-flex items-center gap-3 pt-4 border-t border-amber-200/50">
+                                <span className="text-sm font-black text-rose-500 uppercase tracking-tight">[추출해야 할 컬럼]</span>
+                                <code className="bg-white px-4 py-1.5 rounded-lg text-base font-black text-slate-700 border-2 border-amber-200 shadow-sm">{currentPrac.target}</code>
+                              </div>
+                              <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                                <h6 className="text-[11px] font-black text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-1"><Icon name="check-circle" size={14} /> 정답 확인 (검증용)</h6>
+                                <pre className="text-sm font-mono text-slate-800 whitespace-pre-wrap"><code>{currentPrac.answer}</code></pre>
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-12 text-blue-300 relative shadow-inner">
+                              <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+                                  <span className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="code" size={16}/> BigQuery Simulator</span>
+                                  <button onClick={()=>{setPracResult(bigQueryEngine(pracQuery, currentPrac, PRAC_TABLE_DATA))}} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg">RUN QUERY <Icon name="play" size={14} fill="white" /></button>
+                              </div>
+                              <textarea className="w-full bg-transparent border-none focus:ring-0 font-mono text-xl h-48 resize-none placeholder-slate-700 leading-relaxed" placeholder="이곳에 쿼리를 작성하세요..." value={pracQuery} onChange={(e)=>setPracQuery(e.target.value)} spellCheck="false" />
+                              
+                              {pracResult && (
+                                <div className={`mt-10 p-8 rounded-[2rem] border-2 animate-in zoom-in-95 duration-500 ${pracResult.success ? 'bg-emerald-50 border-emerald-500 text-slate-900' : 'bg-rose-50 border-rose-400 text-slate-900'}`}>
+                                  <div className="flex items-start gap-4 mb-6">
+                                    {pracResult.success ? <Icon name="check-square" size={32} className="text-emerald-500"/> : <Icon name="alert-circle" size={32} className="text-rose-500"/>}
+                                    <div className="text-base space-y-1 flex-1">
+                                      <p className={`font-black text-2xl ${pracResult.success ? 'text-emerald-600' : 'text-rose-600'}`}>{pracResult.success ? "정답입니다! (Correct Answer)" : "오답 (Incorrect)"}</p>
+                                      <p className={`font-medium ${pracResult.success ? 'text-slate-600' : 'text-rose-500'}`}>{pracResult.error || "쿼리가 성공적으로 실행되었습니다."}</p>
+                                    </div>
+                                  </div>
+                                  {pracResult.data !== null && pracResult.data !== undefined && (
+                                    <div className={`mt-6 pt-8 border-t ${pracResult.success ? 'border-emerald-200' : 'border-rose-200'}`}>
+                                      <h5 className={`text-sm font-black uppercase mb-4 flex items-center gap-2 ${pracResult.success ? 'text-emerald-600' : 'text-rose-600'}`}><Icon name="table" size={16}/> 실행 결과 (Result)</h5>
+                                      <div className="overflow-x-auto rounded-2xl border-2 bg-white"><table className="min-w-full text-sm text-left border-collapse">
+                                        <thead className="bg-slate-50 border-b"><tr>{pracResult.data.length > 0 && Object.keys(pracResult.data[0]).map(k=><th key={k} className="px-3 py-2 font-bold text-center border-x">{k}</th>)}</tr></thead>
+                                        <tbody>{pracResult.data.map((row, i)=><tr key={i} className="border-b">{Object.values(row).map((v,j)=><td key={j} className="px-3 py-2 font-mono border-x text-center">{v !== null ? String(v) : 'NULL'}</td>)}</tr>)}</tbody>
+                                      </table></div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex justify-between items-center pt-2">
+                              <button onClick={() => alert(`힌트: ${currentPrac.hint}`)} className="text-slate-400 hover:text-blue-600 text-sm font-black flex items-center gap-2 transition-colors uppercase"><Icon name="help-circle" size={18}/> 힌트 보기</button>
+                              {pracResult && pracResult.success && (
+                                <button onClick={() => { if(pracStep < PRACTICAL_DATA.length - 1) { setPracStep(pracStep + 1); setPracQuery(''); setPracResult(null); document.getElementById('pracContentScroll').scrollTop = 0; } }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 과제 <Icon name="chevron-right" size={24}/></button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </main>
+                  </React.Fragment>
+                )}
+              </div>
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
