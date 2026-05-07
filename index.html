@@ -434,7 +434,7 @@
             if (part.startsWith('[') && part.endsWith(']')) {
               const title = part.slice(1, -1);
               return (
-                <span key={index} className="block w-fit bg-blue-50 text-blue-700 px-5 py-2 rounded-full text-sm font-black mt-8 mb-3 border border-blue-200 shadow-sm tracking-wide">
+                <span key={index} className="block w-fit bg-blue-50 text-blue-700 px-5 py-2 rounded-full text-sm font-black mt-8 mb-3 border border-blue-200 shadow-sm tracking-wide whitespace-normal">
                   {title}
                 </span>
               );
@@ -471,6 +471,15 @@
                   success: false,
                   data: null,
                   error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다."
+              };
+          }
+
+          // [신규 조치] WITH 절 누락 전역 체크
+          if (/\bwith\b/.test(normalizedAnswer) && !/\bwith\b/.test(normalizedInput)) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요."
               };
           }
 
