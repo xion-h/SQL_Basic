@@ -107,7 +107,7 @@ const STEPS_DATA = [
   {
     step: 3,
     title: "데이터 요약과 고유값 추출",
-    grammar: "COUNT, SUM, AVG, MAX, MIN\n& DISTINCT",
+    grammar: "COUNT, SUM, AVG, MAX, MIN & DISTINCT",
     subtitle: "수치 데이터의 집계와 중복 제거",
     theory: "[집계 함수]\n집계 함수는 대량의 행을 요약하여 하나의 통계치를 만듭니다.\n- COUNT(*): 전체 행 개수\n- SUM(컬럼): 합계\n- AVG(컬럼): 평균\n- MAX/MIN(컬럼): 최댓값/최솟값\n\n[DISTINCT (고유값 추출)]\n지정한 컬럼에서 중복된 데이터를 제거하고 고유한 값만 1개씩 뽑아냅니다.\n종류가 몇 개인지 확인할 때 필수적인 문법입니다.\n(예: SELECT DISTINCT category FROM sales)\n\n[사용 방법]\nSELECT \n  COUNT(*), \n  SUM(숫자컬럼)\nFROM 테이블\n;",
     checkpoint: "집계 함수는 기본적으로 NULL 값을 무시합니다.\nAVG 계산 시 분모에서 빠진다는 점을 주의하세요.",
@@ -135,7 +135,7 @@ const STEPS_DATA = [
   {
     step: 4,
     title: "그룹화, 필터링 및 정렬",
-    grammar: "GROUP BY, HAVING\n& ORDER BY",
+    grammar: "GROUP BY, HAVING & ORDER BY",
     subtitle: "기준별 데이터 묶기와 결과 정렬",
     theory: "데이터를 특정 기준(지역, 카테고리 등)으로 그룹화하고,\n조건을 건 뒤, 최종 결과를 정렬합니다.\n\n[왜 GROUP BY로 묶어야 할까요?]\n집계 함수(SUM, COUNT 등)는 테이블 전체를 한 덩어리로 뭉뚱그려 계산합니다.\n만약 '지역별'처럼 쪼개서 결과를 보고 싶다면,\n반드시 GROUP BY 절을 사용하여 '어떤 컬럼을 기준으로 묶을지' DB에 명확히 알려주어야 합니다.\n\n[GROUP BY (그룹화)]\n지정한 컬럼의 값이 같은 데이터들을 하나의 그룹으로 묶어줍니다.\n엑셀의 피벗 테이블에서 '행'에 기준을 넣는 것과 같습니다.\n\n[HAVING (그룹 결과 필터링)]\nGROUP BY로 묶여서 계산된 '최종 집계 결과(예: 지역별 총 매출)'에 조건을 걸어 필터링합니다.\n개별 데이터를 거르는 WHERE와 역할이 다릅니다.\n\n[ORDER BY (정렬)]\n모든 작업이 끝난 최종 결과를 보기 좋게 정렬합니다.\n기본값은 오름차순(ASC)이며, 내림차순은 DESC를 붙입니다.",
     checkpoint: "실행 순서를 명확히 구분하세요.\n\n1) WHERE (그룹화 전 필터)\n2) GROUP BY (그룹화)\n3) HAVING (그룹 결과 필터)\n4) ORDER BY (가장 마지막에 실행되며, SELECT에서 만든 별칭을 사용할 수 있습니다.)",
@@ -262,7 +262,7 @@ const STEPS_DATA = [
   {
     step: 7,
     title: "문자열 다루기와 형변환",
-    grammar: "CAST, SUBSTR, CONCAT\n& JOIN 응용",
+    grammar: "CAST, SUBSTR, CONCAT",
     subtitle: "형태가 다른 더티 데이터(Dirty Data) 맞춰주기",
     theory: "실무의 데이터는 항상 예쁘지 않습니다. 테이블마다 날짜 포맷이나 코드의 형태가 달라 바로 JOIN이 안 되는 치명적인 문제가 자주 발생합니다. 이를 일치시키는 전처리(Prep) 함수들을 배웁니다.\n\n[CAST (형변환)]\n문자열 '100'과 숫자 100은 다릅니다. JOIN이나 연산을 위해 형식을 강제 변환합니다.\n(예: CAST('123' AS INT64))\n\n[SUBSTR (문자열 자르기)]\n텍스트의 특정 부분만 잘라냅니다. 1번째 글자부터 4개를 자른다는 뜻입니다.\n(예: SUBSTR('2026-05-01', 1, 4) -> '2026')\n\n[CONCAT (문자열 합치기)]\n여러 조각난 문자열을 이어 붙여 온전한 조인 키(Key)를 만듭니다.\n(예: CONCAT('A', '-', 'B') -> 'A-B')",
     checkpoint: "CAST 시 INT64는 정수형, STRING은 문자형입니다.\nSUBSTR은 공백이나 기호(-)도 1칸으로 계산하므로 위치를 정확히 세어야 합니다.",
@@ -357,7 +357,7 @@ const STEPS_DATA = [
   {
     step: 10,
     title: "중복 제거 및 순번",
-    grammar: "ROW_NUMBER\n& QUALIFY",
+    grammar: "ROW_NUMBER & QUALIFY",
     subtitle: "최신 데이터 1건 선별의 기술",
     theory: "[GROUP BY + MAX의 치명적 한계]\n\"각 유저별로 가장 최근에 접속한 날짜의 '기기(Device) 정보'\"를 알고 싶다면?\nGROUP BY로 MAX(날짜)는 구할 수 있지만, 그 날짜에 해당하는 다른 컬럼(기기 정보 등)은 함께 가져올 수 없다는 치명적인 한계가 있습니다.\n\n[1. ROW_NUMBER() OVER() 의 마법]\n데이터에 조건별로 '순위표(등수)' 컬럼을 새로 만들어 원래 행의 모든 정보를 보존합니다.\n- PARTITION BY: 그룹화할 기준 (예: 유저별로 1등부터 매기기)\n- ORDER BY: 순위를 매길 기준 (예: 시간순 DESC)\n(예: SELECT *, ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) AS rn FROM table)\n\n[2. QUALIFY (빅쿼리 전용 필터링)]\n생성된 순위표에서 \"1등만 가져와라\"라고 단 한 줄로 필터링해주는 강력한 구문입니다.\n(예: SELECT * FROM table QUALIFY ROW_NUMBER() OVER(...) = 1)",
     checkpoint: "ORDER BY의 정렬 방향(DESC/ASC)이 결과의 핵심입니다.\n'가장 최신'을 원한다면 반드시 DESC인지 확인하세요.",
@@ -384,7 +384,7 @@ const STEPS_DATA = [
   {
     step: 11,
     title: "데이터 마트 생성",
-    grammar: "CREATE OR\nREPLACE TABLE",
+    grammar: "CREATE OR REPLACE TABLE",
     subtitle: "분석 결과를 새로운 테이블로 영구 저장하기",
     theory: "분석 파이프라인의 최종 목적지입니다. 쿼리로 추출한 훌륭한 인사이트를 허공에 날리지 마세요.\n데이터베이스에 '물리적인 테이블(Data Mart)'로 영구 저장하여 대시보드나 다른 팀에 공유해야 합니다.\n\n[CREATE OR REPLACE TABLE]\n새로운 테이블을 만듭니다. 기존에 같은 이름의 테이블이 있어도 에러를 내지 않고 깔끔하게 최신 데이터로 덮어씁니다(멱등성 보장).\n\n[사용 방법]\nCREATE OR REPLACE TABLE `새로운_테이블명` AS \nSELECT \n  * \nFROM 기존테이블\n;",
     checkpoint: "이 구문은 화면에 결과를 렌더링하지 않고 백그라운드에서 데이터를 저장합니다.\n항상 SELECT 쿼리의 가장 윗단에 씌워주기만 하면 됩니다.",
@@ -431,6 +431,7 @@ const renderTheoryText = (text) => {
     if (index > 0 && parts[index - 1].startsWith('[')) {
       textContent = textContent.replace(/^\n+/, '');
     }
+    // 텍스트 내에 포함된 HTML 태그(table 등)를 안전하게 렌더링
     return <span key={index} dangerouslySetInnerHTML={{ __html: textContent }} />;
   });
 };
@@ -460,6 +461,7 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
   const normalizedInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
   const normalizedAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
 
+  // 그룹화 누락 전역 체크
   if (normalizedAnswer.includes('group by') && !normalizedInput.includes('group by')) {
       return { 
           success: false, 
@@ -468,6 +470,7 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
       };
   }
   
+  // 정렬 누락 전역 체크
   if (currentEx.goal.includes('정렬') && !normalizedInput.includes('order by')) {
       return {
           success: false,
@@ -476,6 +479,7 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
       };
   }
 
+  // WITH 절 누락 전역 체크
   if (/\bwith\b/.test(normalizedAnswer) && !/\bwith\b/.test(normalizedInput)) {
       return {
           success: false,
@@ -484,6 +488,7 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
       };
   }
 
+  // 서브쿼리 누락 전역 체크 (WHERE / FROM 인라인뷰 모두 포함)
   if (normalizedAnswer.includes('(select') && !normalizedInput.includes('(select') && !normalizedInput.includes('( select')) {
       return {
           success: false,
@@ -492,6 +497,7 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
       };
   }
 
+  // 윈도우 함수 누락 전역 체크
   if (normalizedAnswer.includes('row_number') && !normalizedInput.includes('row_number')) {
       return {
           success: false,
@@ -500,6 +506,7 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
       };
   }
 
+  // 문자열 함수 누락 전역 체크
   if (normalizedAnswer.includes('concat') && !normalizedInput.includes('concat')) {
       return {
           success: false,
@@ -515,6 +522,7 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
       };
   }
   
+  // DISTINCT 누락 전역 체크
   if (normalizedAnswer.includes('distinct') && !normalizedInput.includes('distinct')) {
       return {
           success: false,
@@ -529,6 +537,7 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
   let showSuccessMessageInsteadOfData = false;
   let isWindowFunction = false;
   
+  // [핵심 조치] 가상 엔진 한계 극복을 위한 텍스트 완벽 일치 판별 (문자열 일치 시 버그와 무관하게 무조건 통과)
   const isStringCorrect = normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '').trim() || normalizedInput + ';' === normalizedAnswer;
   
   try {
@@ -613,6 +622,7 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
                           const cleanKey = key.includes('.') ? key.split('.')[1] : key;
                           const lowerKey = cleanKey.toLowerCase();
                           
+                          // SELECT * JOIN 버그: 값이 있는데 나중에 들어온 null로 덮어써지는 것을 막음
                           if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
                               return; 
                           }
@@ -640,11 +650,13 @@ const bigQueryEngine = (input, currentEx, sourceDataObj) => {
   } catch (err) {
       executionError = "실행 오류: " + err.message;
       
+      // WHERE 절에서 콤마(,) 사용 시 스마트 힌트 제공
       if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parse error')) {
           executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
       }
   }
   
+  // [핵심 조치] 가상 엔진의 한계 버그 등을 무시하고 문자열이 맞으면 무조건 정답 & 올바른 렌더링 데이터 주입
   if (isDataCorrect || isStringCorrect) {
     let displayData = isDataCorrect ? executedData : currentEx.res;
     if (showSuccessMessageInsteadOfData) {
@@ -858,18 +870,18 @@ export default function App() {
               <div className="max-w-6xl mx-auto space-y-16 animate-in fade-in duration-500 pb-40">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-blue-600 font-black text-[13px] uppercase tracking-wider"><Icon name="book-open" size={16} /> <span>Phase {currentData.step} 가이드</span></div>
-                  <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">{currentData.title}: <br className="md:hidden" /><span className="text-blue-600 whitespace-pre-wrap">{currentData.grammar}</span></h2>
-                  <p className="text-xl text-slate-500 font-medium italic break-keep">"{currentData.subtitle}"</p>
+                  <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">{currentData.title} <br /> <span className="block text-blue-600 text-[28px] md:text-4xl mt-3">{currentData.grammar}</span></h2>
+                  <p className="text-xl text-slate-500 font-medium italic break-keep mt-2">"{currentData.subtitle}"</p>
                 </div>
                 
                 <div className="bg-white rounded-[3rem] p-12 border-2 border-slate-100 shadow-sm space-y-10">
                   <section className="space-y-2">
                     <div className="flex items-center gap-3 mb-4"><div className="w-1.5 h-6 bg-blue-600 rounded-full"></div><h4 className="text-xl font-black text-slate-900">상세 이론 및 사용법</h4></div>
-                    <div className="text-slate-700 text-lg leading-relaxed font-medium whitespace-pre-wrap break-keep">
+                    <div className="text-slate-700 text-lg leading-relaxed font-medium break-keep">
                       {renderTheoryText(currentData.theory)}
                     </div>
                   </section>
-                  <section className="bg-blue-50/50 rounded-[2rem] p-8 border border-blue-100 flex items-start gap-5">
+                  <section className="bg-blue-50/50 rounded-[2rem] p-8 border border-blue-100 flex items-start gap-5 mt-6">
                     <Icon name="check-square" size={28} className="text-blue-600 flex-none mt-1" />
                     <div className="space-y-2"><h5 className="font-black text-slate-900 text-lg">체크 포인트 (Check Point)</h5><p className="text-slate-600 text-base leading-relaxed font-medium break-keep whitespace-pre-wrap">{currentData.checkpoint}</p></div>
                   </section>
