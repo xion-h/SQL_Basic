@@ -325,11 +325,11 @@
             example: "WITH tmp AS (\n  SELECT \n    * \n  FROM daily_sales\n)\nSELECT \n  * \nFROM tmp\n;",
             mockResult: [{ dt: '2026-05-01', amt: 300 }],
             exercises: [
-              { id: 1, goal: "[상황: 기초 테이블 세팅] 데이터 분석가로서 복잡한 쿼리를 짜기 전, daily_sales 전체를 담은 'base'라는 임시 테이블을 WITH문으로 선언하고 전체(*)를 조회해 보세요.", target: "*", answer: "WITH base AS (SELECT * FROM daily_sales) SELECT * FROM base;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-02', amt:100, item:'B'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH base AS (...) SELECT * FROM base" },
-              { id: 2, goal: "[상황: 조건부 임시 테이블] 금액(amt)이 150 이상인 우수 실적만 모아둔 'high'라는 임시 테이블을 만들고 전체(*)를 조회하세요.", target: "*", answer: "WITH high AS (SELECT * FROM daily_sales WHERE amt >= 150) SELECT * FROM high;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH 문 안에 WHERE 절을 넣으세요." },
-              { id: 3, goal: "[상황: 일별 집계 테이블] 마케팅팀의 요청으로 일자별(dt) 매출 합계(s)를 미리 계산해둔 'tmp' 임시 테이블을 구성하고 전체(*)를 조회하세요.", target: "dt, s", answer: "WITH tmp AS (SELECT dt, SUM(amt) AS s FROM daily_sales GROUP BY dt) SELECT * FROM tmp;", res: [{dt:'2026-05-01', s:300},{dt:'2026-05-02', s:100},{dt:'2026-05-03', s:500}], hint: "GROUP BY를 포함합니다." },
-              { id: 4, goal: "[상황: 더미 데이터 생성] 시스템 테스트를 위해 단순 숫자 1을 반환하는 가장 단순한 't'라는 임시 테이블을 만들고 조회해 보세요.", target: "1", answer: "WITH t AS (SELECT 1) SELECT * FROM t;", res: [{f0_:1}], hint: "WITH t AS (SELECT 1) SELECT * FROM t" },
-              { id: 5, goal: "[상황: 가공 데이터 블록 생성] 기존 매출액(amt)에 2를 곱해 예상 매출(d_amt)을 만든 'double' 임시 테이블을 선언하고 조회하세요.", target: "d_amt", answer: "WITH double AS (SELECT amt * 2 AS d_amt FROM daily_sales) SELECT * FROM double;", res: [{d_amt:600},{d_amt:200},{d_amt:1000}], hint: "SELECT amt * 2 AS d_amt" }
+              { id: 1, goal: "[상황: 기초 테이블 세팅] 데이터 분석가로서 복잡한 쿼리를 짜기 전, daily_sales 전체를 담은 'base'라는 임시 테이블을 WITH문으로 선언하고\n전체(*)를 조회해 보세요.", target: "*", answer: "WITH base AS (SELECT * FROM daily_sales) SELECT * FROM base;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-02', amt:100, item:'B'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH base AS (...) SELECT * FROM base" },
+              { id: 2, goal: "[상황: 조건부 임시 테이블] 금액(amt)이 150 이상인 우수 실적만 모아둔 'high'라는 임시 테이블을 만들고\n전체(*)를 조회하세요.", target: "*", answer: "WITH high AS (SELECT * FROM daily_sales WHERE amt >= 150) SELECT * FROM high;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH 문 안에 WHERE 절을 넣으세요." },
+              { id: 3, goal: "[상황: 일별 집계 테이블] 마케팅팀의 요청으로 일자별(dt) 매출 합계(s)를 미리 계산해둔 'tmp' 임시 테이블을 구성하고\n전체(*)를 조회하세요.", target: "dt, s", answer: "WITH tmp AS (SELECT dt, SUM(amt) AS s FROM daily_sales GROUP BY dt) SELECT * FROM tmp;", res: [{dt:'2026-05-01', s:300},{dt:'2026-05-02', s:100},{dt:'2026-05-03', s:500}], hint: "GROUP BY를 포함합니다." },
+              { id: 4, goal: "[상황: 더미 데이터 생성] 시스템 테스트를 위해 단순 숫자 1을 반환하는 가장 단순한 't'라는 임시 테이블을 만들고\n조해해 보세요.", target: "1", answer: "WITH t AS (SELECT 1) SELECT * FROM t;", res: [{f0_:1}], hint: "WITH t AS (SELECT 1) SELECT * FROM t" },
+              { id: 5, goal: "[상황: 가공 데이터 블록 생성] 기존 매출액(amt)에 2를 곱해 예상 매출(d_amt)을 만든 'double' 임시 테이블을 선언하고\n조회하세요.", target: "d_amt", answer: "WITH double AS (SELECT amt * 2 AS d_amt FROM daily_sales) SELECT * FROM double;", res: [{d_amt:600},{d_amt:200},{d_amt:1000}], hint: "SELECT amt * 2 AS d_amt" }
             ]
           },
           {
@@ -352,9 +352,9 @@
             example: "SELECT \n  * \nFROM login_log \nQUALIFY ROW_NUMBER() OVER(\n  PARTITION BY user \n  ORDER BY time DESC\n) = 1\n;",
             mockResult: [{ user: 'A', time: '12:00' }],
             exercises: [
-              { id: 1, goal: "[상황: 단순 순번 부여] 전체 접속 로그(login_log)에 아무런 기준 없이 단순히 번호(rn)를 매겨 전체 데이터 규모를 파악하세요.", target: "rn 포함", answer: "SELECT *, ROW_NUMBER() OVER() AS rn FROM login_log;", res: [{user:'A', time:'10:00', device:'PC', rn:1},{user:'A', time:'12:00', device:'Mobile', rn:2},{user:'B', time:'11:00', device:'PC', rn:3},{user:'B', time:'13:00', device:'Mobile', rn:4}], hint: "ROW_NUMBER() OVER() AS rn" },
-              { id: 2, goal: "[상황: 유저별 번호 부여] 유저(user)별 접속 패턴을 보기 위해, 유저 단위로 파티션(그룹)을 나누어 번호(user_rn)를 매겨보세요.", target: "user_rn 포함", answer: "SELECT *, ROW_NUMBER() OVER(PARTITION BY user) AS user_rn FROM login_log;", res: [{user:'A', time:'10:00', device:'PC', user_rn:1},{user:'A', time:'12:00', device:'Mobile', user_rn:2},{user:'B', time:'11:00', device:'PC', user_rn:1},{user:'B', time:'13:00', device:'Mobile', user_rn:2}], hint: "PARTITION BY user 를 사용하세요." },
-              { id: 3, goal: "[상황: 시간 역순 정렬] 접속 시간(time)이 가장 늦은(최근) 데이터부터 1번이 되도록 정렬하여 전체 리스트에 번호(time_rn)를 부여하세요.", target: "time_rn 포함", answer: "SELECT *, ROW_NUMBER() OVER(ORDER BY time DESC) AS time_rn FROM login_log;", res: [{user:'B', time:'13:00', device:'Mobile', time_rn:1},{user:'A', time:'12:00', device:'Mobile', time_rn:2},{user:'B', time:'11:00', device:'PC', time_rn:3},{user:'A', time:'10:00', device:'PC', time_rn:4}], hint: "ORDER BY time DESC 를 사용하세요." },
+              { id: 1, goal: "[상황: 단순 순번 부여] 전체 접속 로그(login_log)에 아무런 기준 없이 단순히 번호(rn)를 매겨\n전체 데이터 규모를 파악하세요.", target: "rn 포함", answer: "SELECT *, ROW_NUMBER() OVER() AS rn FROM login_log;", res: [{user:'A', time:'10:00', device:'PC', rn:1},{user:'A', time:'12:00', device:'Mobile', rn:2},{user:'B', time:'11:00', device:'PC', rn:3},{user:'B', time:'13:00', device:'Mobile', rn:4}], hint: "ROW_NUMBER() OVER() AS rn" },
+              { id: 2, goal: "[상황: 유저별 번호 부여] 유저(user)별 접속 패턴을 보기 위해, 유저 단위로 파티션(그룹)을 나누어\n번호(user_rn)를 매겨보세요.", target: "user_rn 포함", answer: "SELECT *, ROW_NUMBER() OVER(PARTITION BY user) AS user_rn FROM login_log;", res: [{user:'A', time:'10:00', device:'PC', user_rn:1},{user:'A', time:'12:00', device:'Mobile', user_rn:2},{user:'B', time:'11:00', device:'PC', user_rn:1},{user:'B', time:'13:00', device:'Mobile', user_rn:2}], hint: "PARTITION BY user 를 사용하세요." },
+              { id: 3, goal: "[상황: 시간 역순 정렬] 접속 시간(time)이 가장 늦은(최근) 데이터부터 1번이 되도록 정렬하여\n전체 리스트에 번호(time_rn)를 부여하세요.", target: "time_rn 포함", answer: "SELECT *, ROW_NUMBER() OVER(ORDER BY time DESC) AS time_rn FROM login_log;", res: [{user:'B', time:'13:00', device:'Mobile', time_rn:1},{user:'A', time:'12:00', device:'Mobile', time_rn:2},{user:'B', time:'11:00', device:'PC', time_rn:3},{user:'A', time:'10:00', device:'PC', time_rn:4}], hint: "ORDER BY time DESC 를 사용하세요." },
               { id: 4, goal: "[상황: 최신 접속 로그 추출] 보안팀에서 유저별로 가장 마지막(최근)에 접속한 단 1건의 로그(*)만 필요하다고 합니다.\nQUALIFY를 사용해 추출하세요.", target: "전체 컬럼", answer: "SELECT * FROM login_log QUALIFY ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) = 1;", res: [{user:'A', time:'12:00', device:'Mobile'},{user:'B', time:'13:00', device:'Mobile'}], hint: "QUALIFY ... = 1 조건을 추가합니다." },
               { id: 5, goal: "[상황: 최초 접속 로그 추출] 마케팅팀에서 유저별 가장 첫(오래된) 접속 로그(*)를 분석하여 유입 채널을 보려 합니다.\n순번을 오름차순(ASC)으로 매겨 1번을 찾으세요.", target: "전체 컬럼", answer: "SELECT * FROM login_log QUALIFY ROW_NUMBER() OVER(PARTITION BY user ORDER BY time ASC) = 1;", res: [{user:'A', time:'10:00', device:'PC'},{user:'B', time:'11:00', device:'PC'}], hint: "ORDER BY time ASC 를 사용하세요." }
             ]
@@ -386,10 +386,10 @@
             example: "SELECT \n  a.*, \n  b.event \nFROM `sales (dt 형태)` a \nLEFT JOIN `events (date_key 형태)` b \n  ON CONCAT(SUBSTR(a.dt, 1, 4), SUBSTR(a.dt, 6, 2), SUBSTR(a.dt, 9, 2)) = b.date_key\n;",
             mockResult: [{ id: 1, dt: "2026-05-01", event: "세일" }],
             exercises: [
-              { id: 1, goal: "[상황: 타입 변환] 개발팀에서 매출(amt) 데이터를 외부 API로 전송하기 위해 문자열(STRING)로 형변환해 달라고 요청했습니다. 변환하여 조회하세요.", target: "STRING", answer: "SELECT CAST(amt AS STRING) FROM sales;", res: [{'cast(amt as string)':'5000'},{'cast(amt as string)':'7000'}], hint: "CAST(amt AS STRING)을 씁니다." },
-              { id: 2, goal: "[상황: 연도 추출] 연간 보고서를 쓰기 위해, 날짜(dt) 컬럼에서 앞 4자리(YYYY)만 잘라내어 연도 데이터를 별도로 추출하세요.", target: "연도", answer: "SELECT SUBSTR(dt, 1, 4) FROM sales;", res: [{'substr(dt, 1, 4)':'2026'},{'substr(dt, 1, 4)':'2026'}], hint: "SUBSTR(dt, 1, 4)를 사용하세요." },
-              { id: 3, goal: "[상황: 문자열 병합] 시스템 출력을 위해, 두 개의 단어 'SQL'과 'Master'를 띄어쓰기 없이 하나의 단어로 이어 붙여 화면에 출력하세요.", target: "합친결과", answer: "SELECT CONCAT('SQL', 'Master');", res: [{'concat(\'sql\', \'master\')':'SQLMaster'}], hint: "CONCAT('SQL', 'Master')" },
-              { id: 4, goal: "[상황: 날짜 포맷 변경] 데이터 정합성을 위해 sales 테이블의 dt 컬럼('2026-05-01')에서 하이픈(-)을 제외하고 '20260501' 형태의 문자열로 만들어 조회하세요.", target: "변환된날짜", answer: "SELECT CONCAT(SUBSTR(dt, 1, 4), SUBSTR(dt, 6, 2), SUBSTR(dt, 9, 2)) FROM sales;", res: [{'concat(substr(dt, 1, 4), substr(dt, 6, 2), substr(dt, 9, 2))':'20260501'},{'concat(substr(dt, 1, 4), substr(dt, 6, 2), substr(dt, 9, 2))':'20260502'}], hint: "연도, 월, 일을 각각 SUBSTR로 자른 뒤 CONCAT으로 묶으세요." },
+              { id: 1, goal: "[상황: 타입 변환] 개발팀에서 매출(amt) 데이터를 외부 API로 전송하기 위해 문자열(STRING)로 형변환해 달라고 요청했습니다.\n변환하여 조회하세요.", target: "STRING", answer: "SELECT CAST(amt AS STRING) FROM sales;", res: [{'cast(amt as string)':'5000'},{'cast(amt as string)':'7000'}], hint: "CAST(amt AS STRING)을 씁니다." },
+              { id: 2, goal: "[상황: 연도 추출] 연간 보고서를 쓰기 위해, 날짜(dt) 컬럼에서 앞 4자리(YYYY)만 잘라내어\n연도 데이터를 별도로 추출하세요.", target: "연도", answer: "SELECT SUBSTR(dt, 1, 4) FROM sales;", res: [{'substr(dt, 1, 4)':'2026'},{'substr(dt, 1, 4)':'2026'}], hint: "SUBSTR(dt, 1, 4)를 사용하세요." },
+              { id: 3, goal: "[상황: 문자열 병합] 시스템 출력을 위해, 두 개의 단어 'SQL'과 'Master'를 띄어쓰기 없이\n하나의 단어로 이어 붙여 화면에 출력하세요.", target: "합친결과", answer: "SELECT CONCAT('SQL', 'Master');", res: [{'concat(\'sql\', \'master\')':'SQLMaster'}], hint: "CONCAT('SQL', 'Master')" },
+              { id: 4, goal: "[상황: 날짜 포맷 변경] 데이터 정합성을 위해 sales 테이블의 dt 컬럼('2026-05-01')에서 하이픈(-)을 제외하고\n'20260501' 형태의 문자열로 만들어 조회하세요.", target: "변환된날짜", answer: "SELECT CONCAT(SUBSTR(dt, 1, 4), SUBSTR(dt, 6, 2), SUBSTR(dt, 9, 2)) FROM sales;", res: [{'concat(substr(dt, 1, 4), substr(dt, 6, 2), substr(dt, 9, 2))':'20260501'},{'concat(substr(dt, 1, 4), substr(dt, 6, 2), substr(dt, 9, 2))':'20260502'}], hint: "연도, 월, 일을 각각 SUBSTR로 자른 뒤 CONCAT으로 묶으세요." },
               { id: 5, goal: "[종합 JOIN 예제] 재무팀(sales)과 마케팅팀(events)의 날짜 포맷이 다릅니다.\n위 4번에서 변환한 날짜 문자열을 키(Key)로 삼아 events 테이블과 LEFT JOIN하여 전체 데이터(*)를 조회하세요.", target: "*", answer: "SELECT * FROM sales a LEFT JOIN events b ON CONCAT(SUBSTR(a.dt, 1, 4), SUBSTR(a.dt, 6, 2), SUBSTR(a.dt, 9, 2)) = b.date_key;", res: [{id:1, dt:'2026-05-01', amt:5000, date_key:'20260501', event_name:'어린이날 사전행사'},{id:2, dt:'2026-05-02', amt:7000, date_key:'20260502', event_name:'주말 깜짝 세일'}], hint: "ON 절에 CONCAT(SUBSTR... ) = b.date_key 를 조건으로 줍니다." }
             ]
           },
@@ -418,11 +418,11 @@
             example: "CREATE OR REPLACE TABLE my_summary AS \nSELECT \n  * \nFROM raw_data\n;",
             mockResult: [{ status: '성공', message: '테이블 my_summary 생성 완료 (출력 데이터 없음)' }],
             exercises: [
-              { id: 1, goal: "[상황: 원본 백업] 대규모 업데이트 전, raw_data 테이블의 전체 내용(*)을 담아 'backup_data'라는 이름의 물리적 테이블로 안전하게 복사해 두세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;", res: [{user:'A', amt:5000},{user:'B', amt:7000}], hint: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;" },
-              { id: 2, goal: "[상황: VIP 데이터 마트 생성] VIP 관리를 위해 amt가 6000 이상인 고액 결제 데이터만 따로 모아 'high_value'라는 테이블로 영구 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE high_value AS SELECT * FROM raw_data WHERE amt >= 6000;", res: [{user:'B', amt:7000}], hint: "SELECT 문 뒤에 WHERE amt >= 6000 을 추가하세요." },
-              { id: 3, goal: "[상황: 특정 유저 로그 추출] CS팀의 요청으로 유저 'A'의 결제 내역만 별도로 분리하여 'user_a_data'라는 테이블을 만들어 공유해 주세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE user_a_data AS SELECT * FROM raw_data WHERE user = 'A';", res: [{user:'A', amt:5000}], hint: "CREATE OR REPLACE TABLE user_a_data AS ..." },
-              { id: 4, goal: "[상황: 전체 요약 마트 구축] 매일 아침 대시보드에 띄울 수 있도록, 전체 데이터의 건수(COUNT)와 매출 합계(SUM)를 구하여 'total_summary' 테이블로 구워두세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE total_summary AS SELECT COUNT(*), SUM(amt) FROM raw_data;", res: [{'count(*)':2, 'sum(amt)':12000}], hint: "SELECT COUNT(*), SUM(amt) FROM raw_data 를 저장합니다." },
-              { id: 5, goal: "[상황: 유저별 집계 마트] 마케팅 캠페인에 즉시 활용할 수 있도록, 유저(user)별 매출 합계를 계산한 결과를 'user_summary'라는 테이블로 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE user_summary AS SELECT user, SUM(amt) FROM raw_data GROUP BY user;", res: [{user:'A', 'sum(amt)':5000},{user:'B', 'sum(amt)':7000}], hint: "SELECT user, SUM(amt) FROM raw_data GROUP BY user 를 저장합니다." }
+              { id: 1, goal: "[상황: 원본 백업] 대규모 업데이트 전, raw_data 테이블의 전체 내용(*)을 담아\n'backup_data'라는 이름의 물리적 테이블로 안전하게 복사해 두세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;", res: [{user:'A', amt:5000},{user:'B', amt:7000}], hint: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;" },
+              { id: 2, goal: "[상황: VIP 데이터 마트 생성] VIP 관리를 위해 amt가 6000 이상인 고액 결제 데이터만 따로 모아\n'high_value'라는 테이블로 영구 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE high_value AS SELECT * FROM raw_data WHERE amt >= 6000;", res: [{user:'B', amt:7000}], hint: "SELECT 문 뒤에 WHERE amt >= 6000 을 추가하세요." },
+              { id: 3, goal: "[상황: 특정 유저 로그 추출] CS팀의 요청으로 유저 'A'의 결제 내역만 별도로 분리하여\n'user_a_data'라는 테이블을 만들어 공유해 주세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE user_a_data AS SELECT * FROM raw_data WHERE user = 'A';", res: [{user:'A', amt:5000}], hint: "CREATE OR REPLACE TABLE user_a_data AS ..." },
+              { id: 4, goal: "[상황: 전체 요약 마트 구축] 매일 아침 대시보드에 띄울 수 있도록, 전체 데이터의 건수(COUNT)와 매출 합계(SUM)를 구하여\n'total_summary' 테이블로 구워두세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE total_summary AS SELECT COUNT(*), SUM(amt) FROM raw_data;", res: [{'count(*)':2, 'sum(amt)':12000}], hint: "SELECT COUNT(*), SUM(amt) FROM raw_data 를 저장합니다." },
+              { id: 5, goal: "[상황: 유저별 집계 마트] 마케팅 캠페인에 즉시 활용할 수 있도록, 유저(user)별 매출 합계를 계산한 결과를\n'user_summary'라는 테이블로 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE user_summary AS SELECT user, SUM(amt) FROM raw_data GROUP BY user;", res: [{user:'A', 'sum(amt)':5000},{user:'B', 'sum(amt)':7000}], hint: "SELECT user, SUM(amt) FROM raw_data GROUP BY user 를 저장합니다." }
             ]
           }
         ];
@@ -446,6 +446,23 @@
             // 텍스트 내에 포함된 HTML 태그(table 등)를 안전하게 렌더링
             return <span key={index} dangerouslySetInnerHTML={{ __html: textContent }} />;
           });
+        };
+
+        const renderGoalText = (text) => {
+            const match = text.match(/^(\[.*?\])\s*(.*)/is);
+            if (match) {
+                return (
+                    <div className="space-y-4">
+                        <span className="inline-block bg-amber-500 text-white px-3 py-1 rounded-lg text-[13px] font-black tracking-wide shadow-sm">
+                            {match[1]}
+                        </span>
+                        <div className="text-2xl md:text-3xl font-black text-slate-900 leading-snug break-keep whitespace-pre-wrap">
+                            {match[2]}
+                        </div>
+                    </div>
+                );
+            }
+            return <div className="text-2xl md:text-3xl font-black text-slate-900 leading-snug break-keep whitespace-pre-wrap">{text}</div>;
         };
 
         // --- 빅쿼리 시뮬레이터 실시간 검증 엔진 ---
@@ -474,7 +491,7 @@
               };
           }
 
-          // [신규 조치] WITH 절 누락 전역 체크
+          // WITH 절 누락 전역 체크
           if (/\bwith\b/.test(normalizedAnswer) && !/\bwith\b/.test(normalizedInput)) {
               return {
                   success: false,
@@ -489,7 +506,6 @@
           let showSuccessMessageInsteadOfData = false;
           let isWindowFunction = false;
           
-          // [핵심 조치] 가상 엔진 한계 극복을 위한 텍스트 완벽 일치 판별 (문자열 일치 시 버그와 무관하게 무조건 통과)
           const isStringCorrect = normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '').trim() || normalizedInput + ';' === normalizedAnswer;
           
           try {
@@ -571,7 +587,6 @@
                                   const cleanKey = key.includes('.') ? key.split('.')[1] : key;
                                   const lowerKey = cleanKey.toLowerCase();
                                   
-                                  // SELECT * JOIN 버그: 값이 있는데 나중에 들어온 null로 덮어써지는 것을 막음
                                   if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
                                       return; 
                                   }
@@ -599,15 +614,13 @@
           } catch (err) {
               executionError = "실행 오류: " + err.message;
               
-              // WHERE 절에서 콤마(,) 사용 시 스마트 힌트 제공
               if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parse error')) {
                   executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
               }
           }
           
-          // [핵심 조치] 가상 엔진의 SELECT * JOIN 버그 등을 무시하고 문자열이 맞으면 무조건 정답 & 올바른 렌더링 데이터 주입
           if (isDataCorrect || isStringCorrect) {
-            let displayData = isDataCorrect ? executedData : currentEx.res; // 가상 엔진 값이 틀렸어도 정답 쿼리라면 원래 정답 데이터(res) 렌더링
+            let displayData = isDataCorrect ? executedData : currentEx.res;
             if (showSuccessMessageInsteadOfData) {
                 displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
             }
@@ -706,7 +719,6 @@
 
               <div className="main-wrapper">
                 
-                {/* 1. 인트로 */}
                 {view === 'intro' && (
                   <div className="content flex flex-col justify-center items-center h-full pb-0 bg-white">
                     <div className="inline-flex items-center gap-3 bg-blue-50 text-blue-600 px-5 py-2 rounded-full text-[13px] font-black tracking-widest border border-blue-100 shadow-sm mb-10"><Icon name="sparkles" size={16} /> 실전형 SQL 커리큘럼</div>
@@ -715,7 +727,6 @@
                   </div>
                 )}
 
-                {/* 2. 구조 */}
                 {view === 'structure' && (
                   <div className="content pt-12">
                     <div className="max-w-6xl mx-auto space-y-16 animate-in fade-in duration-1000 pb-32">
@@ -757,7 +768,6 @@
                   </div>
                 )}
 
-                {/* 3. 이론 및 실습 (UI 개편 - 좌우 분할 스플릿 뷰 적용) */}
                 {view === 'theory' && (
                   <React.Fragment>
                     <aside className="sidebar">
@@ -814,7 +824,6 @@
                           </div>
                         </div>
 
-                        {/* 신규 좌우 분할(Split) 레이아웃 적용된 연습문제 영역 */}
                         <div className="space-y-8 pt-16 border-t-4 border-slate-200">
                           <div className="flex items-center justify-between mb-4">
                             <div className="space-y-1"><span className="text-amber-500 font-black text-[13px] uppercase tracking-widest">{activeStep + 1}단계 실전 미션</span><h2 className="text-4xl font-black text-slate-900 tracking-tight">연습 문제</h2></div>
@@ -826,14 +835,16 @@
                           </div>
 
                           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                            {/* 좌측 영역 (Context) - 스크롤 시 상단에 Sticky 고정 */}
                             <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
                                 <div className="bg-amber-50 p-8 rounded-[2rem] border-2 border-amber-100 space-y-5 shadow-sm">
                                   <h5 className="text-xs font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Icon name="sparkles" size={18} /> Mission Goal</h5>
-                                  <p className="text-slate-900 font-black text-2xl leading-tight break-keep whitespace-pre-wrap">{currentData.exercises[exerciseIdx].goal}</p>
-                                  <div className="inline-flex items-center gap-3 pt-4 border-t border-amber-200/50">
-                                    <span className="text-sm font-black text-rose-500 uppercase tracking-tight">[추출해야 할 컬럼]</span>
-                                    <code className="bg-white px-4 py-1.5 rounded-lg text-base font-black text-slate-700 border-2 border-amber-200 shadow-sm">{currentData.exercises[exerciseIdx].target}</code>
+                                  
+                                  {/* 미션 목표 렌더링 개선 (상황과 미션 분리) */}
+                                  {renderGoalText(currentData.exercises[exerciseIdx].goal)}
+
+                                  <div className="inline-flex items-center gap-3 pt-4 border-t border-amber-200/50 w-full">
+                                    <span className="text-sm font-black text-rose-500 uppercase tracking-tight">[추출 컬럼]</span>
+                                    <code className="bg-white px-4 py-1.5 rounded-lg text-sm font-black text-slate-700 border-2 border-amber-200 shadow-sm flex-1 truncate">{currentData.exercises[exerciseIdx].target}</code>
                                   </div>
                                 </div>
 
@@ -851,9 +862,14 @@
                                     ))}
                                   </div>
                                 </div>
+                                
+                                {/* 복구된 정답 확인(검증용) 영역 */}
+                                <div className="mt-6 p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl shadow-sm">
+                                  <h6 className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Icon name="check-circle" size={16} /> 정답 확인 (검증용)</h6>
+                                  <pre className="text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentData.exercises[exerciseIdx].answer}</code></pre>
+                                </div>
                             </div>
 
-                            {/* 우측 영역 (Action) - 에디터 및 결과 */}
                             <div className="lg:col-span-7 flex flex-col space-y-6">
                                 <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-12 text-blue-300 relative shadow-inner">
                                   <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
@@ -907,7 +923,6 @@
                   </React.Fragment>
                 )}
 
-                {/* 4. 실무 적용 뷰 (동일하게 좌우 스플릿 뷰 적용) */}
                 {view === 'practical' && (
                   <React.Fragment>
                     <aside className="sidebar">
@@ -931,15 +946,16 @@
                         </div>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                           {/* 좌측 영역 (Context) */}
                            <div className="lg:col-span-5 space-y-8 lg:sticky lg:top-8">
                                 <div className="bg-amber-50 p-8 rounded-3xl border-2 border-amber-100 space-y-5 shadow-sm">
                                   <h5 className="text-sm font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Icon name="sparkles" size={18} /> 비즈니스 시나리오</h5>
-                                  <p className="text-slate-900 font-black text-2xl leading-tight break-keep">{currentPrac.title}</p>
-                                  <p className="text-slate-700 text-lg font-medium leading-relaxed bg-white/60 p-4 rounded-xl border border-amber-200/50 break-keep whitespace-pre-wrap">{currentPrac.scenario}</p>
-                                  <div className="inline-flex items-center gap-3 pt-4 border-t border-amber-200/50">
-                                    <span className="text-sm font-black text-rose-500 uppercase tracking-tight">[추출해야 할 컬럼]</span>
-                                    <code className="bg-white px-4 py-1.5 rounded-lg text-base font-black text-slate-700 border-2 border-amber-200 shadow-sm">{currentPrac.target}</code>
+                                  
+                                  {/* 미션 목표 렌더링 개선 */}
+                                  {renderGoalText(currentPrac.scenario)}
+
+                                  <div className="inline-flex items-center gap-3 pt-4 border-t border-amber-200/50 w-full">
+                                    <span className="text-sm font-black text-rose-500 uppercase tracking-tight">[추출 컬럼]</span>
+                                    <code className="bg-white px-4 py-1.5 rounded-lg text-sm font-black text-slate-700 border-2 border-amber-200 shadow-sm flex-1 truncate">{currentPrac.target}</code>
                                   </div>
                                 </div>
 
@@ -957,9 +973,14 @@
                                     ))}
                                   </div>
                                 </div>
+                                
+                                {/* 복구된 정답 확인(검증용) 영역 */}
+                                <div className="mt-6 p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl shadow-sm">
+                                  <h6 className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Icon name="check-circle" size={16} /> 정답 확인 (검증용)</h6>
+                                  <pre className="text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentPrac.answer}</code></pre>
+                                </div>
                            </div>
 
-                           {/* 우측 영역 (Action) */}
                            <div className="lg:col-span-7 flex flex-col space-y-6">
                               <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-12 text-blue-300 relative shadow-inner">
                                 <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
