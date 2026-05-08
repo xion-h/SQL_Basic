@@ -142,7 +142,8 @@
               { id: 3, goal: "[상황: 고액 결제 건수 세기]\n매출액(amt)이 10000 이상 발생한 VIP 결제가\n총 몇 건(행 개수)인지 세어보세요.", target: "COUNT(*)", answer: "SELECT COUNT(*) FROM sales WHERE amt >= 10000;", res: [{'count(*)':2}], hint: "WHERE amt >= 10000 조건을 추가하세요." },
               { id: 4, goal: "[상황: 고객 단가 확인]\n1회 결제 시 유저들의 평균 결제액(객단가)을 구하고,\n그 컬럼의 이름을 'avg_amt'로 명명하세요.", target: "avg_amt", answer: "SELECT AVG(amt) AS avg_amt FROM sales;", res: [{avg_amt:9500}], hint: "AVG(amt) AS avg_amt" },
               { id: 5, goal: "[상황: 최대 실적 탐색]\n이벤트 성과를 확인하기 위해,\n전체 데이터 중 한 번에 결제된 가장 높은 매출액을 찾으세요.", target: "MAX(amt)", answer: "SELECT MAX(amt) FROM sales;", res: [{'max(amt)':15000}], hint: "MAX(amt) 함수를 사용하세요." },
-              { id: 6, goal: "[상황: 최저가 방어선 확인]\n수박의 할인이 너무 심하게 들어간 건 없는지 확인하려 합니다.\ncategory가 '수박'인 건 중 가장 낮은 매출액을 구하세요.", target: "MIN(amt)", answer: "SELECT MIN(amt) FROM sales WHERE category = '수박';", res: [{'min(amt)':5000}], hint: "WHERE 조건을 먼저 적용한 뒤, MIN(amt) 함수를 사용하세요." }
+              { id: 6, goal: "[상황: 최저가 방어선 확인]\n수박의 할인이 너무 심하게 들어간 건 없는지 확인하려 합니다.\ncategory가 '수박'인 건 중 가장 낮은 매출액을 구하세요.", target: "MIN(amt)", answer: "SELECT MIN(amt) FROM sales WHERE category = '수박';", res: [{'min(amt)':5000}], hint: "WHERE 조건을 먼저 적용한 뒤, MIN(amt) 함수를 사용하세요." },
+              { id: 7, goal: "[상황: 재방문 고객 파악]\n이벤트 기간 동안 발생한 전체 결제 건수와, 실제 결제한 '고유 고객 수'를 비교하려 합니다.\nCOUNT(u_id)와 COUNT(DISTINCT u_id)를 함께 조회하여 차이를 확인하세요.", target: "결제건수, 고유고객수", answer: "SELECT COUNT(u_id), COUNT(DISTINCT u_id) FROM sales;", res: [{'count(u_id)':4, 'count(distinct u_id)':3}], hint: "COUNT(u_id), COUNT(DISTINCT u_id) 형태로 작성하세요." }
             ]
           },
           {
@@ -673,6 +674,11 @@
               // WHERE 절에서 콤마(,) 사용 시 스마트 힌트 제공
               if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parse error')) {
                   executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
+              }
+              
+              // DISTINCT 괄호 사용 시 스마트 힌트 제공
+              if (normalizedInput.includes('count(distinct(')) {
+                  executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
               }
           }
           
