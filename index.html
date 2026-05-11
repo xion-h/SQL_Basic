@@ -484,6 +484,85 @@
           const normalizedInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
           const normalizedAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
 
+          // 그룹화 누락 전역 체크
+          if (normalizedAnswer.includes('group by') && !normalizedInput.includes('group by')) {
+              return { 
+                  success: false, 
+                  data: null,
+                  error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." 
+              };
+          }
+          
+          // 정렬 누락 전역 체크
+          if (currentEx.goal.includes('정렬') && !normalizedInput.includes('order by')) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다."
+              };
+          }
+
+          // WITH 절 누락 전역 체크
+          if (/\bwith\b/.test(normalizedAnswer) && !/\bwith\b/.test(normalizedInput)) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요."
+              };
+          }
+
+          // 서브쿼리 누락 전역 체크 (WHERE / FROM 인라인뷰 모두 포함)
+          if (normalizedAnswer.includes('(select') && !normalizedInput.includes('(select') && !normalizedInput.includes('( select')) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요."
+              };
+          }
+
+          // 윈도우 함수 누락 전역 체크
+          if (normalizedAnswer.includes('row_number') && !normalizedInput.includes('row_number')) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요."
+              };
+          }
+
+          // 문자열 함수 누락 전역 체크
+          if (normalizedAnswer.includes('concat') && !normalizedInput.includes('concat')) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요."
+              };
+          }
+          if (normalizedAnswer.includes('substr') && !normalizedInput.includes('substr')) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요."
+              };
+          }
+          
+          // DISTINCT 누락 전역 체크
+          if (normalizedAnswer.includes('distinct') && !normalizedInput.includes('distinct')) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요."
+              };
+          }
+
+          // 별칭 기호 오용 방지: AS 뒤에 작은/큰 따옴표 사용 금지 (백틱 허용)
+          if (/\bas\s+['"][^'"]+['"]/i.test(normalizedInput)) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 따옴표는 문자열 데이터(값)를 표현할 때만 쓰며, 컬럼명/별칭에는 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
+              };
+          }
+
           let executedData = null;
           let executionError = null;
           let isDataCorrect = false;
@@ -524,9 +603,9 @@
                       const cols = indices.map(idx => {
                           if (!isNaN(idx) && idx > 0 && idx <= selectItems.length) {
                               let item = selectItems[idx - 1];
-                              const asMatch = item.match(/(.+?)\s+AS\s+(.+)/i);
+                              const asMatch = item.match(/(.+?)\s+AS\s+(.+)/is);
                               if (asMatch) return asMatch[1].trim();
-                              const spaceMatch = item.match(/(.+?)\s+([a-zA-Z0-9_]+)$/);
+                              const spaceMatch = item.match(/(.+?)\s+([a-zA-Z0-9_]+)$/is);
                               if (spaceMatch && !item.includes('(')) return spaceMatch[1].trim();
                               return item;
                           }
@@ -541,7 +620,7 @@
                           let idx = parseInt(parts[0], 10);
                           if (!isNaN(idx) && idx > 0 && idx <= selectItems.length) {
                               let item = selectItems[idx - 1];
-                              let aliasMatch = item.match(/AS\s+([a-zA-Z0-9_]+)$/i) || item.match(/\s+([a-zA-Z0-9_]+)$/i);
+                              let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
                               parts[0] = aliasMatch ? aliasMatch[1].trim() : item;
                           }
                           return parts.join(' ');
