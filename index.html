@@ -151,7 +151,7 @@
             title: "그룹화, 필터링 및 정렬",
             grammar: "GROUP BY, HAVING\n& ORDER BY",
             subtitle: "기준별 데이터 묶기와 결과 정렬",
-            theory: "데이터를 특정 기준(지역, 카테고리 등)으로 그룹화하고,\n조건을 건 뒤, 최종 결과를 정렬합니다.\n\n[왜 GROUP BY로 묶어야 할까요?]\n집계 함수(SUM, COUNT 등)는 테이블 전체를 한 덩어리로 뭉뚱그려 계산합니다.\n만약 '지역별'처럼 쪼개서 결과를 보고 싶다면,\n반드시 GROUP BY 절을 사용하여 '어떤 컬럼을 기준으로 묶을지' DB에 명확히 알려주어야 합니다.\n\n[WHERE와 HAVING의 치명적 차이: 왜 구분해야 할까?]\nWHERE는 데이터를 '그룹으로 묶기 전(원본 상태)'에 필터링하고,\nHAVING은 데이터를 '그룹으로 묶은 후(집계 완료 상태)'에 필터링합니다.\n\n예를 들어, \"개별 결제액이 1000원 이상인 건들만 모아 지역별 합계를 구해라\"는 WHERE의 역할이고,\n\"지역별 합계를 먼저 낸 뒤, 그 총합이 5000원 이상인 지역만 남겨라\"는 HAVING의 역할입니다.\n컴퓨터는 WHERE 절을 처리할 때 아직 SUM이나 COUNT의 결과를 모르기 때문에, 집계 함수는 반드시 HAVING에서만 써야 에러가 나지 않습니다.\n\n[ORDER BY (정렬)]\n모든 작업이 끝난 최종 결과를 보기 좋게 정렬합니다.\n기본값은 오름차순(ASC)이며, 내림차순은 DESC를 붙입니다.",
+            theory: "데이터를 특정 기준(지역, 카테고리 등)으로 그룹화하고,\n조건을 건 뒤, 최종 결과를 정렬합니다.\n\n[왜 GROUP BY로 묶어야 할까요?]\n집계 함수(SUM, COUNT 등)는 테이블 전체를 한 덩어리로 뭉뚱그려 계산합니다.\n만약 '지역별'처럼 쪼개서 결과를 보고 싶다면,\n반드시 GROUP BY 절을 사용하여 '어떤 컬럼을 기준으로 묶을지' DB에 명확히 알려주어야 합니다.\n\n[GROUP BY (그룹화)]\n지정한 컬럼의 값이 같은 데이터들을 하나의 그룹으로 묶어줍니다.\n엑셀의 피벗 테이블에서 '행'에 기준을 넣는 것과 같습니다.\n\n[WHERE와 HAVING의 치명적 차이: 왜 구분해야 할까?]\nWHERE는 데이터를 '그룹으로 묶기 전(원본 상태)'에 필터링하고,\nHAVING은 데이터를 '그룹으로 묶은 후(집계 완료 상태)'에 필터링합니다.\n예를 들어, \"개별 결제액이 1000원 이상인 건들만 모아 지역별 합계를 구해라\"는 WHERE의 역할이고,\n\"지역별 합계를 먼저 낸 뒤, 그 총합이 5000원 이상인 지역만 남겨라\"는 HAVING의 역할입니다.\n컴퓨터는 WHERE 절을 처리할 때 아직 SUM이나 COUNT의 결과를 모르기 때문에, 집계 함수는 반드시 HAVING에서만 써야 에러가 나지 않습니다.\n\n[HAVING (그룹 결과 필터링)]\nGROUP BY로 묶여서 계산된 '최종 집계 결과(예: 지역별 총 매출)'에 조건을 걸어 필터링합니다.\n개별 데이터를 거르는 WHERE와 역할이 다릅니다.\n\n[ORDER BY (정렬)]\n모든 작업이 끝난 최종 결과를 보기 좋게 정렬합니다.\n기본값은 오름차순(ASC)이며, 내림차순은 DESC를 붙입니다.\n\n※ SELECT에 없는 컬럼으로 정렬이 가능한가요?\n네, 가능합니다! SQL의 논리적 실행 순서는 `FROM → WHERE → SELECT → ORDER BY` 입니다. ORDER BY가 실행되는 시점엔 이미 FROM에서 원본 테이블을 불러왔기 때문에, 화면에 출력(SELECT)하지 않는 원본 컬럼이라도 정렬 기준으로 삼을 수 있습니다.",
             checkpoint: "실행 순서를 명확히 구분하세요.\n\n1) WHERE (그룹화 전 필터)\n2) GROUP BY (그룹화)\n3) HAVING (그룹 결과 필터)\n4) ORDER BY (가장 마지막에 실행되며, SELECT에서 만든 별칭을 사용할 수 있습니다.)",
             targetTable: "sales_region",
             exampleData: { "sales_region": [
@@ -482,85 +482,6 @@
           const normalizedInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
           const normalizedAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
 
-          // 그룹화 누락 전역 체크
-          if (normalizedAnswer.includes('group by') && !normalizedInput.includes('group by')) {
-              return { 
-                  success: false, 
-                  data: null,
-                  error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." 
-              };
-          }
-          
-          // 정렬 누락 전역 체크
-          if (currentEx.goal.includes('정렬') && !normalizedInput.includes('order by')) {
-              return {
-                  success: false,
-                  data: null,
-                  error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다."
-              };
-          }
-
-          // WITH 절 누락 전역 체크
-          if (/\bwith\b/.test(normalizedAnswer) && !/\bwith\b/.test(normalizedInput)) {
-              return {
-                  success: false,
-                  data: null,
-                  error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요."
-              };
-          }
-
-          // 서브쿼리 누락 전역 체크 (WHERE / FROM 인라인뷰 모두 포함)
-          if (normalizedAnswer.includes('(select') && !normalizedInput.includes('(select') && !normalizedInput.includes('( select')) {
-              return {
-                  success: false,
-                  data: null,
-                  error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요."
-              };
-          }
-
-          // 윈도우 함수 누락 전역 체크
-          if (normalizedAnswer.includes('row_number') && !normalizedInput.includes('row_number')) {
-              return {
-                  success: false,
-                  data: null,
-                  error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요."
-              };
-          }
-
-          // 문자열 함수 누락 전역 체크
-          if (normalizedAnswer.includes('concat') && !normalizedInput.includes('concat')) {
-              return {
-                  success: false,
-                  data: null,
-                  error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요."
-              };
-          }
-          if (normalizedAnswer.includes('substr') && !normalizedInput.includes('substr')) {
-              return {
-                  success: false,
-                  data: null,
-                  error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요."
-              };
-          }
-          
-          // DISTINCT 누락 전역 체크
-          if (normalizedAnswer.includes('distinct') && !normalizedInput.includes('distinct')) {
-              return {
-                  success: false,
-                  data: null,
-                  error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요."
-              };
-          }
-
-          // 별칭 기호 오용 방지: AS 뒤에 작은/큰 따옴표 사용 금지 (백틱 허용)
-          if (/\bas\s+['"][^'"]+['"]/i.test(normalizedInput)) {
-              return {
-                  success: false,
-                  data: null,
-                  error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 따옴표는 문자열 데이터(값)를 표현할 때만 쓰며, 컬럼명/별칭에는 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
-              };
-          }
-
           let executedData = null;
           let executionError = null;
           let isDataCorrect = false;
@@ -690,8 +611,45 @@
                   executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
               }
           }
+
+          // [핵심 조치] 필수 요구사항 누락 검사 (가상 엔진 실행 후에 검사하여 틀려도 데이터를 보여줌)
+          const rules = [
+              { keyword: 'group by', error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." },
+              { keyword: 'order by', condition: currentEx.goal.includes('정렬'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
+              { keyword: 'with', boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
+              { keyword: '(select', alt: '( select', error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
+              { keyword: 'row_number', error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
+              { keyword: 'concat', error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
+              { keyword: 'substr', error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
+              { keyword: 'distinct', error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
+          ];
+
+          for (const rule of rules) {
+              let needToCheck = false;
+              if (rule.condition !== undefined) {
+                  needToCheck = rule.condition;
+              } else {
+                  needToCheck = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(normalizedAnswer) : normalizedAnswer.includes(rule.keyword);
+              }
+
+              if (needToCheck) {
+                  let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(normalizedInput) : normalizedInput.includes(rule.keyword);
+                  if (rule.alt && !hasKeyword) hasKeyword = normalizedInput.includes(rule.alt);
+                  if (!hasKeyword) {
+                      return { success: false, data: executedData, error: rule.error }; // 데이터는 반환하되 성공여부는 false
+                  }
+              }
+          }
+
+          // 별칭 기호 오용 방지: AS 뒤에 작은/큰 따옴표 사용 금지 (백틱 허용)
+          if (/\bas\s+['"][^'"]+['"]/i.test(normalizedInput)) {
+              return {
+                  success: false,
+                  data: executedData,
+                  error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 따옴표는 문자열 데이터(값)를 표현할 때만 쓰며, 컬럼명/별칭에는 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
+              };
+          }
           
-          // [핵심 조치] 가상 엔진의 한계 버그 등을 무시하고 문자열이 맞으면 무조건 정답 & 올바른 렌더링 데이터 주입
           if (isDataCorrect || isStringCorrect) {
             let displayData = isDataCorrect ? executedData : currentEx.res; // 가상 엔진 값이 틀렸어도 정답 쿼리라면 원래 정답 데이터(res) 렌더링
             if (showSuccessMessageInsteadOfData) {
