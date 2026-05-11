@@ -552,6 +552,15 @@
               };
           }
 
+          // 별칭 기호 오용 방지: AS 뒤에 작은/큰 따옴표 사용 금지 (백틱 허용)
+          if (/\bas\s+['"][^'"]+['"]/i.test(normalizedInput)) {
+              return {
+                  success: false,
+                  data: null,
+                  error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 따옴표는 문자열 데이터(값)를 표현할 때만 쓰며, 컬럼명/별칭에는 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
+              };
+          }
+
           let executedData = null;
           let executionError = null;
           let isDataCorrect = false;
