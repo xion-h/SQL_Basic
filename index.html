@@ -550,41 +550,53 @@
                           const isOrderRequired = currentEx.goal.includes('정렬') || normalizedAnswer.includes('order by') || normalizedAnswer.includes('limit');
                           const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
 
-                          const normalize = (data, sortRows) => {
+                          // [완벽 해결] 1. 값 기반 행렬 비교 (컬럼명 무시, 순서 유지) 
+                          // CAST, CONCAT 등 엔진이 임의로 컬럼명을(CONVERT 등) 바꿀 때 대처하기 위함
+                          const normalizeValuesOnly = (data, sortRows) => {
                               const mappedData = data.map(row => {
-                                  const newRow = {};
-                                  Object.keys(row).forEach(key => {
-                                      const cleanKey = key.includes('.') ? key.split('.')[1] : key;
-                                      const lowerKey = cleanKey.toLowerCase();
-                                      
-                                      // SELECT * JOIN 버그: 값이 있는데 나중에 들어온 null로 덮어써지는 것을 막음
-                                      if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
-                                          return; 
-                                      }
-                                      newRow[lowerKey] = row[key];
-                                  });
-                                  
-                                  // [가상 엔진 버그 해결] LEFT JOIN 시 매칭되지 않는 우측 테이블의 컬럼이 아예 누락되는 현상 보완
-                                  expectedKeys.forEach(ek => {
-                                      if (!(ek in newRow)) {
-                                          newRow[ek] = null;
-                                      }
-                                  });
-                                  
-                                  return JSON.stringify(Object.entries(newRow).sort());
+                                  const vals = Object.values(row).map(v => v !== null && v !== undefined ? String(v) : 'NULL');
+                                  return JSON.stringify(vals);
                               });
                               return sortRows ? mappedData.sort() : mappedData;
                           };
                           
-                          const userResult = normalize(executedData, !isOrderRequired);
-                          const expectedResult = normalize(currentEx.res, !isOrderRequired);
+                          const userValMatrix = normalizeValuesOnly(executedData, !isOrderRequired);
+                          const expValMatrix = normalizeValuesOnly(currentEx.res, !isOrderRequired);
                           
-                          isDataCorrect = JSON.stringify(userResult) === JSON.stringify(expectedResult);
-                          
-                          if (!isDataCorrect && executedData.length === 1 && Object.keys(executedData[0]).length === 1 && Object.keys(currentEx.res[0]).length === 1) {
-                              const userVal = Object.values(executedData[0])[0];
-                              const expVal = Object.values(currentEx.res[0])[0];
-                              if (String(userVal) === String(expVal)) {
+                          if (JSON.stringify(userValMatrix) === JSON.stringify(expValMatrix)) {
+                              isDataCorrect = true;
+                          }
+
+                          // 2. 키 기반 상세 비교 (LEFT JOIN 버그 등 컬럼 누락 방어)
+                          if (!isDataCorrect) {
+                              const normalize = (data, sortRows) => {
+                                  const mappedData = data.map(row => {
+                                      const newRow = {};
+                                      Object.keys(row).forEach(key => {
+                                          const cleanKey = key.includes('.') ? key.split('.')[1] : key;
+                                          const lowerKey = cleanKey.toLowerCase();
+                                          
+                                          if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
+                                              return; 
+                                          }
+                                          newRow[lowerKey] = row[key];
+                                      });
+                                      
+                                      expectedKeys.forEach(ek => {
+                                          if (!(ek in newRow)) {
+                                              newRow[ek] = null;
+                                          }
+                                      });
+                                      
+                                      return JSON.stringify(Object.entries(newRow).sort());
+                                  });
+                                  return sortRows ? mappedData.sort() : mappedData;
+                              };
+                              
+                              const userResult = normalize(executedData, !isOrderRequired);
+                              const expectedResult = normalize(currentEx.res, !isOrderRequired);
+                              
+                              if (JSON.stringify(userResult) === JSON.stringify(expectedResult)) {
                                   isDataCorrect = true;
                               }
                           }
