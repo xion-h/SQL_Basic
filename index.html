@@ -470,213 +470,207 @@
 
         // --- 빅쿼리 시뮬레이터 실시간 검증 엔진 ---
         const bigQueryEngine = (input, currentEx, sourceDataObj) => {
-          if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
-          if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
-
-          const normalizedInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
-          const normalizedAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
-
-          let executedData = null;
-          let executionError = null;
-          let isDataCorrect = false;
-          let showSuccessMessageInsteadOfData = false;
-          let isWindowFunction = false;
-          
-          // [핵심 조치] 가상 엔진 한계 극복을 위한 텍스트 완벽 일치 판별 (문자열 일치 시 버그와 무관하게 무조건 통과)
-          const isStringCorrect = normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '').trim() || normalizedInput + ';' === normalizedAnswer;
-          
           try {
-              const alasql = window.alasql;
-              if (!alasql) throw new Error("SQL 엔진 로딩 중입니다.");
+              if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
+              if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
 
-              let sqlForAlasql = input.trim()
-                  .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
-                  .replace(/INT64/gi, 'INT');
-                  
-              if (sqlForAlasql.toUpperCase().includes('QUALIFY')) {
-                  isWindowFunction = true;
-                  throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 결과창 렌더링을 지원하지 않습니다.");
-              }
+              const normalizedInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
+              const normalizedAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
 
-              const createTableMatch = sqlForAlasql.match(/CREATE\s+OR\s+REPLACE\s+TABLE\s+([a-zA-Z0-9_`]+)\s+AS/i);
-              if (createTableMatch) {
-                  showSuccessMessageInsteadOfData = true;
-                  sqlForAlasql = sqlForAlasql.replace(/CREATE\s+OR\s+REPLACE\s+TABLE\s+[a-zA-Z0-9_`]+\s+AS/i, '');
-              }
+              let executedData = null;
+              let executionError = null;
+              let isDataCorrect = false;
+              let showSuccessMessageInsteadOfData = false;
+              let isWindowFunction = false;
+              
+              // [핵심 조치] 가상 엔진 한계 극복을 위한 텍스트 완벽 일치 판별 (문자열 일치 시 버그와 무관하게 무조건 통과)
+              const isStringCorrect = normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '').trim() || normalizedInput + ';' === normalizedAnswer;
+              
+              try {
+                  const alasql = window.alasql;
+                  if (!alasql) throw new Error("SQL 엔진 로딩 중입니다.");
 
-              sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
-
-              const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
-              let selectItems = [];
-              if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
-                  selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
-                  
-                  // [핵심 조치] GROUP BY 1 숫자 치환 시 표현식 통째로가 아닌 '별칭(Alias)'만 안전하게 가져오도록 개선 (가상 엔진 다운 방지)
-                  sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*;|\s*$)/is, (match, indicesStr, rest) => {
-                      const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
-                      const cols = indices.map(idx => {
-                          if (!isNaN(idx) && idx > 0 && idx <= selectItems.length) {
-                              let item = selectItems[idx - 1];
-                              let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
-                              if (aliasMatch) return aliasMatch[1].trim();
-                              return item.trim();
-                          }
-                          return String(idx);
-                      });
-                      return `GROUP BY ${cols.join(', ')}${rest}`;
-                  });
-
-                  sqlForAlasql = sqlForAlasql.replace(/ORDER\s+BY\s+([^;]+)/is, (match, orderStr) => {
-                      const orderItems = orderStr.split(',').map(s => {
-                          let parts = s.trim().split(/\s+/);
-                          let idx = parseInt(parts[0], 10);
-                          if (!isNaN(idx) && idx > 0 && idx <= selectItems.length) {
-                              let item = selectItems[idx - 1];
-                              let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
-                              parts[0] = aliasMatch ? aliasMatch[1].trim() : item;
-                          }
-                          return parts.join(' ');
-                      });
-                      return `ORDER BY ${orderItems.join(', ')}`;
-                  });
-              }
-
-              Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
-                  alasql(`DROP TABLE IF EXISTS ${tbl}`);
-                  alasql(`CREATE TABLE ${tbl}`);
-                  if (!alasql.tables[tbl]) {
-                      alasql.tables[tbl] = { data: [] };
+                  let sqlForAlasql = input.trim()
+                      .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
+                      .replace(/INT64/gi, 'INT');
+                      
+                  if (sqlForAlasql.toUpperCase().includes('QUALIFY')) {
+                      isWindowFunction = true;
+                      throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 결과창 렌더링을 지원하지 않습니다.");
                   }
-                  alasql.tables[tbl].data = JSON.parse(JSON.stringify(rows));
-              });
-              
-              executedData = alasql(sqlForAlasql);
-              
-              if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
-                  if (normalizedAnswer.includes('create or replace table') && !normalizedInput.includes('create or replace table')) {
-                      isDataCorrect = false;
-                      executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
-                  } else {
-                      const isOrderRequired = currentEx.goal.includes('정렬') || normalizedAnswer.includes('order by') || normalizedAnswer.includes('limit');
-                      const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
 
-                      const normalize = (data, sortRows) => {
-                          const mappedData = data.map(row => {
-                              const newRow = {};
-                              Object.keys(row).forEach(key => {
-                                  const cleanKey = key.includes('.') ? key.split('.')[1] : key;
-                                  const lowerKey = cleanKey.toLowerCase();
-                                  
-                                  // SELECT * JOIN 버그: 값이 있는데 나중에 들어온 null로 덮어써지는 것을 막음
-                                  if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
-                                      return; 
-                                  }
-                                  newRow[lowerKey] = row[key];
-                              });
-                              
-                              // [가상 엔진 버그 해결] LEFT JOIN 시 매칭되지 않는 우측 테이블의 컬럼이 아예 누락되는 현상 보완
-                              expectedKeys.forEach(ek => {
-                                  if (!(ek in newRow)) {
-                                      newRow[ek] = null;
-                                  }
-                              });
-                              
-                              return JSON.stringify(Object.entries(newRow).sort());
+                  const createTableMatch = sqlForAlasql.match(/CREATE\s+OR\s+REPLACE\s+TABLE\s+([a-zA-Z0-9_`]+)\s+AS/i);
+                  if (createTableMatch) {
+                      showSuccessMessageInsteadOfData = true;
+                      sqlForAlasql = sqlForAlasql.replace(/CREATE\s+OR\s+REPLACE\s+TABLE\s+[a-zA-Z0-9_`]+\s+AS/i, '');
+                  }
+
+                  sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
+
+                  const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
+                  let selectItems = [];
+                  if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
+                      selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
+                      
+                      // [핵심 조치] GROUP BY 1 숫자 치환 시 표현식 통째로가 아닌 '별칭(Alias)'만 안전하게 가져오도록 개선 (가상 엔진 다운 방지)
+                      sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*;|\s*$)/is, (match, indicesStr, rest) => {
+                          const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
+                          const cols = indices.map(idx => {
+                              if (!isNaN(idx) && idx > 0 && idx <= selectItems.length) {
+                                  let item = selectItems[idx - 1];
+                                  if (!item) return String(idx); // 안전 장치 추가
+                                  let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
+                                  if (aliasMatch) return aliasMatch[1].trim();
+                                  return item.trim();
+                              }
+                              return String(idx);
                           });
-                          return sortRows ? mappedData.sort() : mappedData;
-                      };
+                          return `GROUP BY ${cols.join(', ')}${rest}`;
+                      });
                       
-                      const userResult = normalize(executedData, !isOrderRequired);
-                      const expectedResult = normalize(currentEx.res, !isOrderRequired);
-                      
-                      isDataCorrect = JSON.stringify(userResult) === JSON.stringify(expectedResult);
-                      
-                      if (!isDataCorrect && executedData.length === 1 && Object.keys(executedData[0]).length === 1 && Object.keys(currentEx.res[0]).length === 1) {
-                          const userVal = Object.values(executedData[0])[0];
-                          const expVal = Object.values(currentEx.res[0])[0];
-                          if (String(userVal) === String(expVal)) {
-                              isDataCorrect = true;
+                      // ORDER BY 치환 로직은 복잡한 집계 함수 사용 시 엔진 무한루프/다운을 유발하므로 삭제 (빅쿼리와 동일하게 숫자 정렬 지원됨)
+                  }
+            
+                  Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
+                      alasql(`DROP TABLE IF EXISTS ${tbl}`);
+                      alasql(`CREATE TABLE ${tbl}`);
+                      if (!alasql.tables[tbl]) {
+                          alasql.tables[tbl] = { data: [] };
+                      }
+                      alasql.tables[tbl].data = JSON.parse(JSON.stringify(rows));
+                  });
+                  
+                  executedData = alasql(sqlForAlasql);
+                  
+                  if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
+                      if (normalizedAnswer.includes('create or replace table') && !normalizedInput.includes('create or replace table')) {
+                          isDataCorrect = false;
+                          executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
+                      } else {
+                          const isOrderRequired = currentEx.goal.includes('정렬') || normalizedAnswer.includes('order by') || normalizedAnswer.includes('limit');
+                          const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
+
+                          const normalize = (data, sortRows) => {
+                              const mappedData = data.map(row => {
+                                  const newRow = {};
+                                  Object.keys(row).forEach(key => {
+                                      const cleanKey = key.includes('.') ? key.split('.')[1] : key;
+                                      const lowerKey = cleanKey.toLowerCase();
+                                      
+                                      if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
+                                          return; 
+                                      }
+                                      newRow[lowerKey] = row[key];
+                                  });
+                                  
+                                  expectedKeys.forEach(ek => {
+                                      if (!(ek in newRow)) {
+                                          newRow[ek] = null;
+                                      }
+                                  });
+                                  
+                                  return JSON.stringify(Object.entries(newRow).sort());
+                              });
+                              return sortRows ? mappedData.sort() : mappedData;
+                          };
+                          
+                          const userResult = normalize(executedData, !isOrderRequired);
+                          const expectedResult = normalize(currentEx.res, !isOrderRequired);
+                          
+                          isDataCorrect = JSON.stringify(userResult) === JSON.stringify(expectedResult);
+                          
+                          if (!isDataCorrect && executedData.length === 1 && Object.keys(executedData[0]).length === 1 && Object.keys(currentEx.res[0]).length === 1) {
+                              const userVal = Object.values(executedData[0])[0];
+                              const expVal = Object.values(currentEx.res[0])[0];
+                              if (String(userVal) === String(expVal)) {
+                                  isDataCorrect = true;
+                              }
                           }
                       }
                   }
+              } catch (err) {
+                  executionError = "실행 오류: " + err.message;
+                  
+                  if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parse error')) {
+                      executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
+                  }
+                  if (normalizedInput.includes('count(distinct(')) {
+                      executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
+                  }
               }
-          } catch (err) {
-              executionError = "실행 오류: " + err.message;
-              
-              // WHERE 절에서 콤마(,) 사용 시 스마트 힌트 제공
-              if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parse error')) {
-                  executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
-              }
-              
-              // DISTINCT 괄호 사용 시 스마트 힌트 제공
-              if (normalizedInput.includes('count(distinct(')) {
-                  executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
-              }
-          }
 
-          // [핵심 조치] 가상 엔진이 뻗었을 때도 표 UI가 무조건 렌더링되도록 강제 빈 배열 보장
-          let finalData = executedData;
-          if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
-              finalData = []; // 강제로 빈 배열로 만들어 표를 무조건 표시함
-              if (executionError) {
-                  executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
+              // [핵심 조치] 가상 엔진이 뻗었을 때도 표 UI가 무조건 렌더링되도록 강제 빈 배열 보장
+              let finalData = executedData;
+              if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
+                  finalData = []; // 강제로 빈 배열로 만들어 표를 무조건 표시함
+                  if (executionError) {
+                      executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
+                  }
               }
-          }
 
-          // [실무 논리 검증] JOIN 시 별칭(Alias) 누락 방지 로직 (이론 6, 문제 4)
-          if (currentData.step === 6 && exerciseIdx === 3) {
-              if (normalizedInput.includes('name is null') && !/[a-z0-9_`]+\.name\s+is\s+null/i.test(normalizedInput)) {
+              // [실무 논리 검증] JOIN 시 별칭(Alias) 누락 방지 로직
+              if (currentData.step === 6 && exerciseIdx === 3) {
+                  if (normalizedInput.includes('name is null') && !/[a-z0-9_`]+\.name\s+is\s+null/i.test(normalizedInput)) {
+                      return {
+                          success: false,
+                          data: finalData,
+                          error: "💡 [분석가 팁] 소속 테이블 누락: 'name IS NULL'처럼 소속을 적지 않으면, 가상 엔진은 기준 테이블에서 name을 찾다 실패하여 전부 NULL로 취급, 모든 데이터를 통과시킵니다. 실무 JOIN에서는 반드시 'b.name IS NULL'처럼 테이블 별칭을 명시해야 합니다."
+                      };
+                  }
+              }
+
+              // 필수 요구사항 누락 검사
+              const rules = [
+                  { keyword: 'group by', condition: normalizedAnswer.includes('group by'), error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." },
+                  { keyword: 'order by', condition: currentEx.goal.includes('정렬') || normalizedAnswer.includes('order by'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
+                  { keyword: 'with', condition: /\bwith\b/.test(normalizedAnswer), boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
+                  { keyword: '(select', condition: normalizedAnswer.includes('(select'), alt: '( select', error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
+                  { keyword: 'row_number', condition: normalizedAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
+                  { keyword: 'concat', condition: normalizedAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
+                  { keyword: 'substr', condition: normalizedAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
+                  { keyword: 'distinct', condition: normalizedAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
+              ];
+
+              for (const rule of rules) {
+                  if (rule.condition) {
+                      let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(normalizedInput) : normalizedInput.includes(rule.keyword);
+                      if (rule.alt && !hasKeyword) hasKeyword = normalizedInput.includes(rule.alt);
+                      if (!hasKeyword) {
+                          return { success: false, data: finalData, error: rule.error }; // 무조건 finalData를 반환하여 표가 노출되도록 함
+                      }
+                  }
+              }
+
+              // 별칭 기호 오용 방지
+              if (/\bas\s+['"][^'"]+['"]/i.test(normalizedInput)) {
                   return {
                       success: false,
                       data: finalData,
-                      error: "💡 [분석가 팁] 소속 테이블 누락: 'name IS NULL'처럼 소속을 적지 않으면, 가상 엔진은 기준 테이블에서 name을 찾다 실패하여 전부 NULL로 취급, 모든 데이터를 통과시킵니다. 실무 JOIN에서는 반드시 'b.name IS NULL'처럼 테이블 별칭을 명시해야 합니다."
+                      error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 따옴표는 문자열 데이터(값)를 표현할 때만 쓰며, 컬럼명/별칭에는 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
                   };
               }
-          }
-
-          // 필수 요구사항 누락 검사
-          const rules = [
-              { keyword: 'group by', condition: normalizedAnswer.includes('group by'), error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." },
-              { keyword: 'order by', condition: currentEx.goal.includes('정렬') || normalizedAnswer.includes('order by'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
-              { keyword: 'with', condition: /\bwith\b/.test(normalizedAnswer), boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
-              { keyword: '(select', condition: normalizedAnswer.includes('(select'), alt: '( select', error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
-              { keyword: 'row_number', condition: normalizedAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
-              { keyword: 'concat', condition: normalizedAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
-              { keyword: 'substr', condition: normalizedAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
-              { keyword: 'distinct', condition: normalizedAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
-          ];
-
-          for (const rule of rules) {
-              if (rule.condition) {
-                  let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(normalizedInput) : normalizedInput.includes(rule.keyword);
-                  if (rule.alt && !hasKeyword) hasKeyword = normalizedInput.includes(rule.alt);
-                  if (!hasKeyword) {
-                      return { success: false, data: finalData, error: rule.error }; // 무조건 finalData를 반환하여 표가 노출되도록 함
-                  }
+              
+              if (isDataCorrect || isStringCorrect) {
+                let displayData = isDataCorrect ? finalData : currentEx.res; // 정답이면 결과 출력
+                if (showSuccessMessageInsteadOfData) {
+                    displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
+                }
+                return { success: true, data: displayData };
+              } else {
+                return { 
+                    success: false, 
+                    data: finalData, 
+                    error: executionError || "오답입니다. 추출해야 할 컬럼명과 필터, 그리고 문제의 의도(정렬, 생성 등)를 확인하세요." 
+                };
               }
-          }
 
-          // 별칭 기호 오용 방지: AS 뒤에 작은/큰 따옴표 사용 금지 (백틱 허용)
-          if (/\bas\s+['"][^'"]+['"]/i.test(normalizedInput)) {
-              return {
-                  success: false,
-                  data: finalData,
-                  error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 따옴표는 문자열 데이터(값)를 표현할 때만 쓰며, 컬럼명/별칭에는 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
+          } catch (criticalErr) {
+              // [핵심 조치] 엔진 코어에서 발생하는 모든 치명적 오류를 잡아내어 앱이 뻗지 않도록 렌더링 방어
+              return { 
+                  success: false, 
+                  data: [], 
+                  error: `치명적 시스템 오류가 발생했습니다: ${criticalErr.message}\n(작성하신 쿼리가 너무 복잡하거나 엔진이 지원하지 않는 문법일 수 있습니다.)` 
               };
-          }
-          
-          if (isDataCorrect || isStringCorrect) {
-            let displayData = isDataCorrect ? finalData : currentEx.res; // 정답이면 결과 출력
-            if (showSuccessMessageInsteadOfData) {
-                displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
-            }
-            return { success: true, data: displayData };
-          } else {
-            return { 
-                success: false, 
-                data: finalData, 
-                error: executionError || "오답입니다. 추출해야 할 컬럼명과 필터, 그리고 문제의 의도(정렬, 생성 등)를 확인하세요." 
-            };
           }
         };
 
@@ -1008,7 +1002,7 @@
                                                       const v = row[k];
                                                       return <td key={j} className={`px-6 py-4 text-slate-700 font-mono border-x ${engineResult.success ? 'border-emerald-50' : 'border-rose-50'} ${getAlignmentClass(v)}`}>{v !== null && v !== undefined ? String(v) : 'NULL'}</td>
                                                   })}</tr>)
-                                                  : <tr><td className="px-6 py-4 text-center text-slate-500 font-medium">조건에 맞는 데이터가 없습니다. (0 Rows)</td></tr>}
+                                                  : <tr><td colSpan={engineHeaders.length || 1} className="px-6 py-4 text-center text-slate-500 font-medium">조건에 맞는 데이터가 없습니다. (0 Rows)</td></tr>}
                                               </tbody>
                                             </table>
                                           </div>
@@ -1114,7 +1108,7 @@
                                           <tbody>{pracResult.data.length > 0 ? pracResult.data.map((row, i)=><tr key={i} className="border-b">{pracHeaders.map((k,j)=>{
                                               const v = row[k];
                                               return <td key={j} className="px-3 py-2 font-mono border-x text-center">{v !== null && v !== undefined ? String(v) : 'NULL'}</td>
-                                          })}</tr>) : <tr><td className="px-6 py-4 text-center text-slate-500 font-medium">조건에 맞는 데이터가 없습니다. (0 Rows)</td></tr>}</tbody>
+                                          })}</tr>) : <tr><td colSpan={pracHeaders.length || 1} className="px-6 py-4 text-center text-slate-500 font-medium">조건에 맞는 데이터가 없습니다. (0 Rows)</td></tr>}</tbody>
                                         </table></div>
                                       </div>
                                     )}
