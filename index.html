@@ -507,14 +507,16 @@
 
                   sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
 
-                  const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
-                  let selectItems = [];
-                  if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
-                      selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
+                  // [핵심 조치] 서브쿼리 내부의 GROUP BY 1 도 처리할 수 있도록, GROUP BY 바로 앞의 가장 가까운 SELECT 절을 동적으로 찾아 매핑
+                  sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
+                      const upToMatch = string.substring(0, offset);
+                      const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
                       
-                      // [핵심 조치] GROUP BY 1 숫자 치환 시 표현식 통째로가 아닌 '별칭(Alias)'만 안전하게 가져오도록 개선 (가상 엔진 다운 방지)
-                      sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*;|\s*$)/is, (match, indicesStr, rest) => {
+                      if (selectMatches.length > 0) {
+                          const lastSelect = selectMatches[selectMatches.length - 1][1];
+                          const selectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
                           const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
+                          
                           const cols = indices.map(idx => {
                               if (!isNaN(idx) && idx > 0 && idx <= selectItems.length) {
                                   let item = selectItems[idx - 1];
@@ -526,10 +528,9 @@
                               return String(idx);
                           });
                           return `GROUP BY ${cols.join(', ')}${rest}`;
-                      });
-                      
-                      // ORDER BY 치환 로직은 복잡한 집계 함수 사용 시 엔진 무한루프/다운을 유발하므로 삭제 (빅쿼리와 동일하게 숫자 정렬 지원됨)
-                  }
+                      }
+                      return match;
+                  });
             
                   Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
                       alasql(`DROP TABLE IF EXISTS ${tbl}`);
