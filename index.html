@@ -609,7 +609,7 @@
               }
 
               // [실무 논리 검증] JOIN 시 별칭(Alias) 누락 방지 로직
-              if (currentData.step === 6 && exerciseIdx === 3) {
+              if (currentEx.goal && currentEx.goal.includes('비정상 결제 탐지')) {
                   if (normalizedInput.includes('name is null') && !/[a-z0-9_`]+\.name\s+is\s+null/i.test(normalizedInput)) {
                       return {
                           success: false,
