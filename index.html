@@ -119,29 +119,31 @@
           },
           {
             step: 3,
-            title: "데이터 연산하기",
-            grammar: "COUNT, SUM, AVG, MAX, MIN",
-            subtitle: "수치 데이터의 집계와 요약",
-            theory: "집계 함수는 대량의 행을 요약하여 하나의 통계치를 만듭니다.\n빅쿼리는 거대한 데이터 집계에 특화되어 있습니다.\n\n[사용 방법]\nSELECT \n  COUNT(*), \n  SUM(숫자컬럼), \n  MAX(숫자컬럼) \nFROM 테이블\n;\n\n[집계 함수 문법]\n- COUNT(*): 전체 행 개수\n- SUM(컬럼): 합계\n- AVG(컬럼): 평균\n- MAX(컬럼): 최댓값\n- MIN(컬럼): 최솟값",
+            title: "데이터 요약과 고유값 추출",
+            grammar: "COUNT, SUM, AVG, MAX, MIN\n& DISTINCT",
+            subtitle: "수치 데이터의 집계와 중복 제거",
+            theory: "[집계 함수]\n집계 함수는 대량의 행을 요약하여 하나의 통계치를 만듭니다.\n- COUNT(*): 전체 행 개수\n- SUM(컬럼): 합계\n- AVG(컬럼): 평균\n- MAX/MIN(컬럼): 최댓값/최솟값\n\n[DISTINCT (고유값 추출)]\n지정한 컬럼에서 중복된 데이터를 제거하고 고유한 값만 1개씩 뽑아냅니다.\n종류가 몇 개인지 확인할 때 필수적인 문법입니다.\n(예: SELECT DISTINCT category FROM sales)\n\n[사용 방법]\nSELECT \n  COUNT(*), \n  SUM(숫자컬럼)\nFROM 테이블\n;",
             checkpoint: "집계 함수는 기본적으로 NULL 값을 무시합니다.\nAVG 계산 시 분모에서 빠진다는 점을 주의하세요.",
             targetTable: "sales",
             exampleData: { "sales": [{ u_id: 'A1', amt: 5000 }, { u_id: 'A2', amt: 15000 }] },
             exerciseData: { "sales": [
               { sale_id: 1, u_id: 'A1', category: '수박', amt: 5000, qty: 2 }, 
               { sale_id: 2, u_id: 'A2', category: '딸기', amt: 15000, qty: 1 }, 
-              { sale_id: 3, u_id: 'A1', category: '수박', amt: 10000, qty: 5 }
+              { sale_id: 3, u_id: 'A1', category: '수박', amt: 10000, qty: 5 },
+              { sale_id: 4, u_id: 'A3', category: '포도', amt: 8000, qty: 1 }
             ] },
             goal: "전체 매출액 합계를 구하세요.",
             logicDetail: "sales 테이블에서 매출액(amt)의 총합(SUM)을 계산합니다.",
             example: "SELECT \n  SUM(amt) \nFROM sales\n;",
-            mockResult: [{ sum_amt: 30000 }],
+            mockResult: [{ sum_amt: 38000 }],
             exercises: [
-              { id: 1, goal: "[상황: 총 매출 파악] 재무팀에 보고하기 위해\n지금까지 발생한 전체 매출액(amt)의 총합을 구하세요.", target: "SUM(amt)", answer: "SELECT SUM(amt) FROM sales;", res: [{'sum(amt)':30000}], hint: "SUM(amt) 함수를 사용하세요." },
-              { id: 2, goal: "[상황: 특정 카테고리 집계] 과일 재고 관리를 위해\ncategory가 '수박'인 데이터만 걸러서 전체 판매 수량(qty) 총합을 구하세요.", target: "SUM(qty)", answer: "SELECT SUM(qty) FROM sales WHERE category = '수박';", res: [{'sum(qty)':7}], hint: "WHERE category = '수박' 조건을 추가하세요." },
-              { id: 3, goal: "[상황: 고액 결제 건수 세기] 매출액(amt)이 10000 이상 발생한 VIP 결제가\n총 몇 건(행 개수)인지 세어보세요.", target: "COUNT(*)", answer: "SELECT COUNT(*) FROM sales WHERE amt >= 10000;", res: [{'count(*)':2}], hint: "WHERE amt >= 10000 조건을 추가하세요." },
-              { id: 4, goal: "[상황: 고객 단가 확인] 1회 결제 시 유저들의 평균 결제액(객단가)을 구하고,\n그 컬럼의 이름을 'avg_amt'로 명명하세요.", target: "avg_amt", answer: "SELECT AVG(amt) AS avg_amt FROM sales;", res: [{avg_amt:10000}], hint: "AVG(amt) AS avg_amt" },
-              { id: 5, goal: "[상황: 최대 실적 탐색] 이벤트 성과를 확인하기 위해,\n전체 데이터 중 한 번에 결제된 가장 높은 매출액을 찾으세요.", target: "MAX(amt)", answer: "SELECT MAX(amt) FROM sales;", res: [{'max(amt)':15000}], hint: "MAX(amt) 함수를 사용하세요." },
-              { id: 6, goal: "[상황: 최저가 방어선 확인] 수박의 할인이 너무 심하게 들어간 건 없는지 확인하려 합니다.\ncategory가 '수박'인 건 중 가장 낮은 매출액을 구하세요.", target: "MIN(amt)", answer: "SELECT MIN(amt) FROM sales WHERE category = '수박';", res: [{'min(amt)':5000}], hint: "WHERE 조건을 먼저 적용한 뒤, MIN(amt) 함수를 사용하세요." }
+              { id: 1, goal: "[상황: 총 매출 파악]\n재무팀에 보고하기 위해\n지금까지 발생한 전체 매출액(amt)의 총합을 구하세요.", target: "SUM(amt)", answer: "SELECT SUM(amt) FROM sales;", res: [{'sum(amt)':38000}], hint: "SUM(amt) 함수를 사용하세요." },
+              { id: 2, goal: "[상황: 카테고리 종류 확인]\n현재 우리 마트에서 판매가 발생한 과일의 종류가 몇 개인지 확인하려 합니다.\ncategory 컬럼을 중복 없이 고유한 값만 추출하세요.", target: "category (고유값)", answer: "SELECT DISTINCT category FROM sales;", res: [{category:'수박'},{category:'딸기'},{category:'포도'}], hint: "SELECT DISTINCT category 를 사용하세요." },
+              { id: 3, goal: "[상황: 고액 결제 건수 세기]\n매출액(amt)이 1000 이상 발생한 VIP 결제가\n총 몇 건(행 개수)인지 세어보세요.", target: "COUNT(*)", answer: "SELECT COUNT(*) FROM sales WHERE amt >= 10000;", res: [{'count(*)':2}], hint: "WHERE amt >= 10000 조건을 추가하세요." },
+              { id: 4, goal: "[상황: 고객 단가 확인]\n1회 결제 시 유저들의 평균 결제액(객단가)을 구하고,\n그 컬럼의 이름을 'avg_amt'로 명명하세요.", target: "avg_amt", answer: "SELECT AVG(amt) AS avg_amt FROM sales;", res: [{avg_amt:9500}], hint: "AVG(amt) AS avg_amt" },
+              { id: 5, goal: "[상황: 최대 실적 탐색]\n이벤트 성과를 확인하기 위해,\n전체 데이터 중 한 번에 결제된 가장 높은 매출액을 찾으세요.", target: "MAX(amt)", answer: "SELECT MAX(amt) FROM sales;", res: [{'max(amt)':15000}], hint: "MAX(amt) 함수를 사용하세요." },
+              { id: 6, goal: "[상황: 최저가 방어선 확인]\n수박의 할인이 너무 심하게 들어간 건 없는지 확인하려 합니다.\ncategory가 '수박'인 건 중 가장 낮은 매출액을 구하세요.", target: "MIN(amt)", answer: "SELECT MIN(amt) FROM sales WHERE category = '수박';", res: [{'min(amt)':5000}], hint: "WHERE 조건을 먼저 적용한 뒤, MIN(amt) 함수를 사용하세요." },
+              { id: 7, goal: "[상황: 재방문 고객 파악]\n이벤트 기간 동안 발생한 전체 결제 건수와, 실제 결제한 '고유 고객 수'를 비교하려 합니다.\nCOUNT(u_id)와 COUNT(DISTINCT u_id)를 함께 조회하여 차이를 확인하세요.", target: "결제건수, 고유고객수", answer: "SELECT COUNT(u_id), COUNT(DISTINCT u_id) FROM sales;", res: [{'count(u_id)':4, 'count(distinct u_id)':3}], hint: "COUNT(u_id), COUNT(DISTINCT u_id) 형태로 작성하세요." }
             ]
           },
           {
@@ -618,6 +620,17 @@
               // DISTINCT 괄호 사용 시 스마트 힌트 제공
               if (normalizedInput.includes('count(distinct(')) {
                   executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
+              }
+          }
+
+          // [실무 논리 검증] JOIN 시 별칭(Alias) 누락 방지 로직 (이론 6, 문제 4)
+          if (currentData.step === 6 && exerciseIdx === 3) {
+              if (normalizedInput.includes('name is null') && !/[a-z0-9_`]+\.name\s+is\s+null/i.test(normalizedInput)) {
+                  return {
+                      success: false,
+                      data: executedData,
+                      error: "💡 [분석가 팁] 소속 테이블 누락: 'name IS NULL'처럼 소속을 적지 않으면, 가상 엔진은 기준 테이블(orders)에서 name을 찾다 실패하여 전부 NULL로 취급, 모든 데이터를 통과시킵니다. 실무 JOIN에서는 반드시 'b.name IS NULL'처럼 테이블 별칭을 명시해야 합니다."
+                  };
               }
           }
 
