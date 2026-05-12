@@ -313,7 +313,7 @@
             title: "쿼리 안의 쿼리",
             grammar: "SUBQUERY",
             subtitle: "질문 안의 질문으로 복잡한 조건 해결하기",
-            theory: "데이터를 분석하다 보면 쿼리 안에서 또 다른 쿼리를 실행해야 할 때가 있습니다. 이를 [서브쿼리]라고 합니다.\n\n[서브쿼리를 반드시 써야 하는 3가지 상황]\n1. 연산/집계 결과를 기준으로 필터링할 때: \"평균 급여보다 높은 사람\"을 찾으려면 WHERE 절에 AVG()를 바로 쓸 수 없어, 서브쿼리로 평균을 먼저 구해야 합니다.\n2. 조인(JOIN) 전 중복을 제거하거나 가공할 때: 1:N 뻥튀기(Fan-out)를 막기 위해 FROM 절 서브쿼리(인라인 뷰)로 중복을 미리 제거하고 조인합니다.\n3. 조인 키(Key)의 포맷을 일치시켜야 할 때: 두 테이블의 날짜 형식이 다를 때, 한쪽을 SUBSTR 등으로 잘라 변환한 임시 결과를 서브쿼리로 감싼 뒤 조인합니다.\n\n[WHERE 절 서브쿼리]\n조건의 기준값을 동적으로 구할 때 사용합니다.\n(예: WHERE 급여 > (SELECT AVG(급여) FROM 테이블))\n\n[FROM 절 서브쿼리 (인라인 뷰)]\n먼저 가공한 쿼리의 결과를 마치 하나의 임시 테이블처럼 사용합니다.\n(예: SELECT * FROM (SELECT 부서, AVG(급여) FROM 테이블 GROUP BY 부서))\n\n※ 주의사항: 서브쿼리는 반드시 괄호 `()`로 감싸야 하며, 안쪽 쿼리가 먼저 실행됩니다.",
+            theory: "데이터를 분석하다 보면 쿼리 안에서 또 다른 쿼리를 실행해야 할 때가 있습니다. 이를 [서브쿼리]라고 합니다.\n※ 주의사항: 서브쿼리는 반드시 괄호 `()`로 감싸야 하며, 안쪽 쿼리가 먼저 실행됩니다.\n\n[WHERE 절 서브쿼리]\nWHERE 절 서브쿼리의 핵심 목적은 연산 자체가 아니라, '현재 테이블의 데이터를 필터링하기 위해 다른 데이터 집합의 결과를 조건으로 끌어와 활용하는 것'입니다.\n\n1. 데이터 집합 포함 여부 (IN / NOT IN)\n특정 조건에 맞는 데이터 목록(집합)에 현재 행의 값이 포함되는지 확인할 때 사용합니다.\n(예: WHERE dept_id IN (SELECT dept_id FROM dept WHERE location = 'Seoul'))\n\n2. 연관 데이터 존재 여부 (EXISTS / NOT EXISTS)\n다른 테이블에 조건을 만족하는 연관 데이터가 존재하는지(True/False) 논리적 판별을 할 때 사용합니다.\n(예: WHERE EXISTS (SELECT 1 FROM orders o WHERE o.cust_id = c.cust_id))\n\n3. 단일 값과의 비교 (연산의 영역)\n집계 함수(AVG, MAX 등)를 통해 도출된 단일 값을 기준으로 크거나 작은지 비교 필터링할 때 사용합니다.\n(예: WHERE salary > (SELECT AVG(salary) FROM employees))\n\n[FROM 절 서브쿼리 (인라인 뷰)]\nFROM 절 서브쿼리의 핵심은 '실재하지 않는 가상의 테이블을 메모리 상에 임시로 만들어내어, 새로운 데이터 소스로 활용하는 것'입니다.\n\n1. SQL 실행 순서의 한계 극복 (다단계 가공)\nSELECT 절에서 새롭게 계산한 컬럼을 같은 레벨의 WHERE 절에서 바로 조건으로 쓸 수 없는 논리적 모순을 해결하기 위해, FROM 절에 가상 테이블을 구성합니다.\n\n2. 조인(JOIN) 전 사전 집계 및 데이터 경량화\n대용량 테이블을 그대로 조인하면 연산량이 폭발하거나 데이터가 부풀려지는 문제가 생기므로, 부서별 평균 급여 등 작고 요약된 임시 테이블을 먼저 짜낸 뒤 조인합니다.\n\n3. Top-N 쿼리 및 윈도우 함수 필터링\n데이터에 순위를 매긴 뒤, \"상위 3명만 뽑아라\"와 같은 조건을 걸기 위해 사용합니다. (윈도우 함수는 WHERE 절에 직접 들어갈 수 없기 때문입니다.)",
             checkpoint: "서브쿼리가 단일 값(스칼라)을 반환하는지, 여러 행(리스트)을 반환하는지 구분해야 합니다.\n여러 개의 값을 반환할 때는 '=' 연산자 대신 'IN' 연산자를 써야 에러가 발생하지 않습니다.",
             targetTable: "employees",
             exampleData: { 
@@ -557,12 +557,14 @@
                                       const cleanKey = key.includes('.') ? key.split('.')[1] : key;
                                       const lowerKey = cleanKey.toLowerCase();
                                       
+                                      // SELECT * JOIN 버그: 값이 있는데 나중에 들어온 null로 덮어써지는 것을 막음
                                       if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
                                           return; 
                                       }
                                       newRow[lowerKey] = row[key];
                                   });
                                   
+                                  // [가상 엔진 버그 해결] LEFT JOIN 시 매칭되지 않는 우측 테이블의 컬럼이 아예 누락되는 현상 보완
                                   expectedKeys.forEach(ek => {
                                       if (!(ek in newRow)) {
                                           newRow[ek] = null;
@@ -591,9 +593,12 @@
               } catch (err) {
                   executionError = "실행 오류: " + err.message;
                   
+                  // WHERE 절에서 콤마(,) 사용 시 스마트 힌트 제공
                   if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parse error')) {
                       executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
                   }
+                  
+                  // DISTINCT 괄호 사용 시 스마트 힌트 제공
                   if (normalizedInput.includes('count(distinct(')) {
                       executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
                   }
@@ -641,7 +646,7 @@
                   }
               }
 
-              // 별칭 기호 오용 방지
+              // 별칭 기호 오용 방지: AS 뒤에 작은/큰 따옴표 사용 금지 (백틱 허용)
               if (/\bas\s+['"][^'"]+['"]/i.test(normalizedInput)) {
                   return {
                       success: false,
