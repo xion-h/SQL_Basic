@@ -375,7 +375,7 @@
             title: "중복 제거 및 순번",
             grammar: "ROW_NUMBER()",
             subtitle: "최신 데이터 1건 선별의 기술",
-            theory: "[GROUP BY + MAX의 치명적 한계]\n\"각 유저별로 가장 최근에 접속한 날짜의 '기기(Device) 정보'\"를 알고 싶다면?\n\nGROUP BY로 MAX(날짜)는 구할 수 있지만, 그 날짜에 해당하는 다른 컬럼(기기 정보 등)은 함께 가져올 수 없다는 치명적인 한계가 있습니다.\n\n[ROW_NUMBER() OVER() 의 마법]\n데이터에 조건별로 '순위표(등수)' 컬럼을 새로 만들어 원래 행의 모든 정보를 보존합니다.\n\n- PARTITION BY: 그룹화할 기준 (예: 유저별로 1등부터 매기기)\n\n- ORDER BY: 순위를 매길 기준 (예: 시간순 DESC)\n\n(예: SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time DESC) AS rn FROM table)\n\n[순위표를 활용한 1등 데이터 필터링]\n생성된 순위표에서 \"1등만 가져와라\"라고 하려면 어떻게 해야 할까요?\n\n윈도우 함수는 WHERE 절에 직접 쓸 수 없기 때문에, 앞서 배운 FROM 절 서브쿼리(인라인 뷰)로 한 번 감싸준 뒤 밖에서 WHERE rn = 1 로 필터링합니다.",
+            theory: "[GROUP BY + MAX의 치명적 한계]\n\"각 유저별로 가장 최근에 접속한 날짜의 '기기(Device) 정보'\"를 알고 싶다면?\nGROUP BY로 MAX(날짜)는 구할 수 있지만, 그 날짜에 해당하는 다른 컬럼(기기 정보 등)은 함께 가져올 수 없다는 치명적인 한계가 있습니다.\n\n[ROW_NUMBER() OVER() 의 마법]\n데이터에 조건별로 '순위표(등수)' 컬럼을 새로 만들어 원래 행의 모든 정보를 보존합니다.\n- PARTITION BY: 그룹화할 기준 (예: 유저별로 1등부터 매기기)\n- ORDER BY: 순위를 매길 기준 (예: 시간순 DESC)\n(예: SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time DESC) AS rn FROM table)\n\n[순위표를 활용한 1등 데이터 필터링]\n생성된 순위표에서 \"1등만 가져와라\"라고 하려면 어떻게 해야 할까요?\n윈도우 함수는 WHERE 절에 직접 쓸 수 없기 때문에, 앞서 배운 FROM 절 서브쿼리(인라인 뷰)로 한 번 감싸준 뒤 밖에서 WHERE rn = 1 로 필터링합니다.",
             checkpoint: "ORDER BY의 정렬 방향(DESC/ASC)이 결과의 핵심입니다.\n'가장 최신'을 원한다면 반드시 DESC인지 확인하세요.",
             targetTable: "login_log",
             exampleData: { "login_log": [{ cust_id: 'A', time: '10:00' }, { cust_id: 'A', time: '12:00' }] },
@@ -388,11 +388,11 @@
             goal: "마지막 방문 기록 1건 추출",
             logicDetail: "유저별로 그룹을 짓고 시간이 늦은 순서로 번호를 매긴 서브쿼리를 만들고, 바깥에서 1번인 행만 필터링합니다.",
             example: "SELECT * \nFROM (\n  SELECT \n    *, \n    ROW_NUMBER() OVER(\n      PARTITION BY cust_id \n      ORDER BY time DESC\n    ) AS rn\n  FROM login_log\n)\nWHERE rn = 1\n;",
-            mockResult: [{ cust_id: 'A', time: '12:00' }],
+            mockResult: [{ cust_id: 'A', time: '12:00', rn: 1 }],
             exercises: [
-              { id: 1, goal: "[상황: 유저별 번호 부여]\n유저(cust_id)별 접속 패턴을 보기 위해, 유저 단위로 파티션(그룹)을 나누어\n번호(user_rn)를 매겨보세요.\n\n(※ 가상 엔진 특성상 새롭게 연산된 rn 컬럼이 결과 표의 첫 번째 열로 출력될 수 있으나 정상입니다.)", target: "user_rn 포함", answer: "SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id) AS user_rn FROM login_log;", res: [{cust_id:'A', time:'10:00', device:'PC', user_rn:1},{cust_id:'A', time:'12:00', device:'Mobile', user_rn:2},{cust_id:'B', time:'11:00', device:'PC', user_rn:1},{cust_id:'B', time:'13:00', device:'Mobile', user_rn:2}], hint: "PARTITION BY cust_id 를 사용하세요." },
-              { id: 2, goal: "[상황: 최신 접속 로그 추출]\n보안팀에서 유저별로 가장 마지막(최근)에 접속한 단 1건의 로그(*)만 필요하다고 합니다.\n서브쿼리를 사용해 추출하세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time DESC) AS rn FROM login_log) WHERE rn = 1;", res: [{cust_id:'A', time:'12:00', device:'Mobile'},{cust_id:'B', time:'13:00', device:'Mobile'}], hint: "FROM 절 서브쿼리로 먼저 rn을 만든 후 WHERE rn = 1 조건을 줍니다." },
-              { id: 3, goal: "[상황: 최초 접속 로그 추출]\n마케팅팀에서 유저별 가장 첫(오래된) 접속 로그(*)를 분석하여 유입 채널을 보려 합니다.\n순번을 오름차순(ASC)으로 매겨 1번을 찾으세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time ASC) AS rn FROM login_log) WHERE rn = 1;", res: [{cust_id:'A', time:'10:00', device:'PC'},{cust_id:'B', time:'11:00', device:'PC'}], hint: "ORDER BY time ASC 를 사용하세요." }
+              { id: 1, goal: "[상황: 단순 순번 부여]\n전체 접속 로그(login_log)를 조회하면서, 별도의 기준 없이 단순히 1번부터 번호(rn)를 매겨 보세요.\n\n(※ 가상 엔진 특성상 새롭게 연산된 rn 컬럼이 결과 표의 첫 번째 열로 출력될 수 있으나 정상입니다.)", target: "전체 컬럼(*), rn", answer: "SELECT *, ROW_NUMBER() OVER() AS rn FROM login_log;", res: [{cust_id:'A', time:'10:00', device:'PC', rn:1},{cust_id:'A', time:'12:00', device:'Mobile', rn:2},{cust_id:'B', time:'11:00', device:'PC', rn:3},{cust_id:'B', time:'13:00', device:'Mobile', rn:4}], hint: "ROW_NUMBER() OVER() AS rn" },
+              { id: 2, goal: "[상황: 최신 접속 로그 추출]\n보안팀에서 유저별로 가장 마지막(최근)에 접속한 단 1건의 로그(*)만 필요하다고 합니다.\n서브쿼리를 사용해 추출하세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time DESC) AS rn FROM login_log) WHERE rn = 1;", res: [{cust_id:'A', time:'12:00', device:'Mobile', rn:1},{cust_id:'B', time:'13:00', device:'Mobile', rn:1}], hint: "FROM 절 서브쿼리로 먼저 rn을 만든 후 WHERE rn = 1 조건을 줍니다." },
+              { id: 3, goal: "[상황: 최초 접속 로그 추출]\n마케팅팀에서 유저별 가장 첫(오래된) 접속 로그(*)를 분석하여 유입 채널을 보려 합니다.\n순번을 오름차순(ASC)으로 매겨 1번을 찾으세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time ASC) AS rn FROM login_log) WHERE rn = 1;", res: [{cust_id:'A', time:'10:00', device:'PC', rn:1},{cust_id:'B', time:'11:00', device:'PC', rn:1}], hint: "ORDER BY time ASC 를 사용하세요." }
             ]
           },
           {
