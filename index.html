@@ -67,7 +67,7 @@
             title: "데이터 기본 규칙",
             grammar: "FROM & SELECT",
             subtitle: "빅쿼리의 표준 작성 형식 이해하기",
-            theory: "SQL은 데이터를 찾아낼 대상을 정하고(FROM),\n그 안에서 출력할 항목을 선택(SELECT)하는 것으로 시작합니다.\n\n[사용 방법]\nSELECT \n  컬럼명1, \n  컬럼명2 \nFROM `테이블` \n;\n\n[핵심 규칙]\n※ AS(별칭)를 사용하여 결과 화면의 이름을 예쁘게 지어줄 수 있습니다.\n\n※ 문자열은 반드시 작은따옴표(' ')로 감싸야 합니다.\n\n※ 명령문의 끝에는 세미콜론(;)을 붙여 쿼리의 종료를 알립니다.",
+            theory: "SQL은 데이터를 찾아낼 대상을 정하고(FROM), 그 안에서 출력할 항목을 선택(SELECT)하는 것으로 시작합니다.\n\n[사용 방법]\nSELECT \n  컬럼명1, \n  컬럼명2 \nFROM `테이블` \n;\n\n[핵심 규칙]\n※ AS(별칭)를 사용하여 결과 화면의 이름을 예쁘게 지어줄 수 있습니다.\n\n※ 문자열은 반드시 작은따옴표(' ')로 감싸야 합니다.\n\n※ 명령문의 끝에는 세미콜론(;)을 붙여 쿼리의 종료를 알립니다.",
             checkpoint: "SELECT 절에서 만든 별칭(AS)은 실행 순서상 가장 나중에 생성됩니다.\n따라서 같은 줄에 있는 다른 계산식에서 그 별칭을 바로 사용할 수 없습니다.",
             targetTable: "orders",
             exampleData: { "orders": [{ entr_id: 'A1', price: 10000 }, { entr_id: 'A2', price: 20000 }] },
@@ -119,38 +119,39 @@
           },
           {
             step: 3,
-            title: "데이터 연산하기",
-            grammar: "COUNT, SUM, AVG, MAX, MIN",
-            subtitle: "수치 데이터의 집계와 요약",
-            theory: "집계 함수는 대량의 행을 요약하여 하나의 통계치를 만듭니다.\n\n빅쿼리는 거대한 데이터 집계에 특화되어 있습니다.\n\n[사용 방법]\nSELECT \n  COUNT(*), \n  SUM(숫자컬럼), \n  MAX(숫자컬럼) \nFROM 테이블\n;\n\n[집계 함수 문법]\n- COUNT(*): 전체 행 개수\n\n- SUM(컬럼): 합계\n\n- AVG(컬럼): 평균\n\n- MAX(컬럼): 최댓값\n\n- MIN(컬럼): 최솟값",
+            title: "데이터 요약과 고유값 추출",
+            grammar: "COUNT, SUM, AVG, MAX, MIN\n& DISTINCT",
+            subtitle: "수치 데이터의 집계와 중복 제거",
+            theory: "[집계 함수]\n집계 함수는 대량의 행을 요약하여 하나의 통계치를 만듭니다.\n\n- COUNT(*): 전체 행 개수\n\n- SUM(컬럼): 합계\n\n- AVG(컬럼): 평균\n\n- MAX/MIN(컬럼): 최댓값/최솟값\n\n[DISTINCT (고유값 추출)]\n지정한 컬럼에서 중복된 데이터를 제거하고 고유한 값만 1개씩 뽑아냅니다.\n\n종류가 몇 개인지 확인할 때 필수적인 문법입니다.\n\n(예: SELECT DISTINCT category FROM sales)\n\n[사용 방법]\nSELECT \n  COUNT(*), \n  SUM(숫자컬럼)\nFROM 테이블\n;",
             checkpoint: "집계 함수는 기본적으로 NULL 값을 무시합니다.\nAVG 계산 시 분모에서 빠진다는 점을 주의하세요.",
             targetTable: "sales",
             exampleData: { "sales": [{ cust_id: 'A1', amt: 5000 }, { cust_id: 'A2', amt: 15000 }] },
             exerciseData: { "sales": [
               { sale_id: 1, cust_id: 'A1', category: '수박', amt: 5000, qty: 2 }, 
               { sale_id: 2, cust_id: 'A2', category: '딸기', amt: 15000, qty: 1 }, 
-              { sale_id: 3, cust_id: 'A1', category: '수박', amt: 10000, qty: 5 }
+              { sale_id: 3, cust_id: 'A1', category: '수박', amt: 10000, qty: 5 },
+              { sale_id: 4, cust_id: 'A3', category: '포도', amt: 8000, qty: 1 }
             ] },
             goal: "전체 매출액 합계를 구하세요.",
             logicDetail: "sales 테이블에서 매출액(amt)의 총합(SUM)을 계산합니다.",
             example: "SELECT \n  SUM(amt) \nFROM sales\n;",
-            mockResult: [{ sum_amt: 30000 }],
+            mockResult: [{ sum_amt: 38000 }],
             exercises: [
-              { id: 1, goal: "[상황: 총 매출 파악] 재무팀에 보고하기 위해\n지금까지 발생한 전체 매출액(amt)의 총합을 구하세요.", target: "SUM(amt)", answer: "SELECT SUM(amt) FROM sales;", res: [{'sum(amt)':30000}], hint: "SUM(amt) 함수를 사용하세요." },
-              { id: 2, goal: "[상황: 특정 카테고리 집계] 과일 재고 관리를 위해\ncategory가 '수박'인 데이터만 걸러서 전체 판매 수량(qty) 총합을 구하세요.", target: "SUM(qty)", answer: "SELECT SUM(qty) FROM sales WHERE category = '수박';", res: [{'sum(qty)':7}], hint: "WHERE category = '수박' 조건을 추가하세요." },
-              { id: 3, goal: "[상황: 고액 결제 건수 세기] 매출액(amt)이 10000 이상 발생한 VIP 결제가\n총 몇 건(행 개수)인지 세어보세요.", target: "COUNT(*)", answer: "SELECT COUNT(*) FROM sales WHERE amt >= 10000;", res: [{'count(*)':2}], hint: "WHERE amt >= 10000 조건을 추가하세요." },
-              { id: 4, goal: "[상황: 고객 단가 확인] 1회 결제 시 유저들의 평균 결제액(객단가)을 구하고,\n그 컬럼의 이름을 'avg_amt'로 명명하세요.", target: "avg_amt", answer: "SELECT AVG(amt) AS avg_amt FROM sales;", res: [{avg_amt:10000}], hint: "AVG(amt) AS avg_amt" },
-              { id: 5, goal: "[상황: 최대 실적 탐색] 이벤트 성과를 확인하기 위해,\n전체 데이터 중 한 번에 결제된 가장 높은 매출액을 찾으세요.", target: "MAX(amt)", answer: "SELECT MAX(amt) FROM sales;", res: [{'max(amt)':15000}], hint: "MAX(amt) 함수를 사용하세요." },
-              { id: 6, goal: "[상황: 최저가 방어선 확인] 수박의 할인이 너무 심하게 들어간 건 없는지 확인하려 합니다.\ncategory가 '수박'인 건 중 가장 낮은 매출액을 구하세요.", target: "MIN(amt)", answer: "SELECT MIN(amt) FROM sales WHERE category = '수박';", res: [{'min(amt)':5000}], hint: "WHERE 조건을 먼저 적용한 뒤, MIN(amt) 함수를 사용하세요." },
-              { id: 7, goal: "[상황: 재방문 고객 파악]\n이벤트 기간 동안 발생한 전체 결제 건수와, 실제 결제한 '고유 고객 수'를 비교하려 합니다.\nCOUNT(cust_id)와 COUNT(DISTINCT cust_id)를 함께 조회하여 차이를 확인하세요.", target: "결제건수, 고유고객수", answer: "SELECT COUNT(cust_id), COUNT(DISTINCT cust_id) FROM sales;", res: [{'count(cust_id)':3, 'count(distinct cust_id)':2}], hint: "COUNT(cust_id), COUNT(DISTINCT cust_id) 형태로 작성하세요." }
+              { id: 1, goal: "[상황: 총 매출 파악]\n재무팀에 보고하기 위해\n지금까지 발생한 전체 매출액(amt)의 총합을 구하세요.", target: "SUM(amt)", answer: "SELECT SUM(amt) FROM sales;", res: [{'sum(amt)':38000}], hint: "SUM(amt) 함수를 사용하세요." },
+              { id: 2, goal: "[상황: 카테고리 종류 확인]\n현재 우리 마트에서 판매가 발생한 과일의 종류가 몇 개인지 확인하려 합니다.\ncategory 컬럼을 중복 없이 고유한 값만 추출하세요.", target: "category (고유값)", answer: "SELECT DISTINCT category FROM sales;", res: [{category:'수박'},{category:'딸기'},{category:'포도'}], hint: "SELECT DISTINCT category 를 사용하세요." },
+              { id: 3, goal: "[상황: 고액 결제 건수 세기]\n매출액(amt)이 10000 이상 발생한 VIP 결제가\n총 몇 건(행 개수)인지 세어보세요.", target: "COUNT(*)", answer: "SELECT COUNT(*) FROM sales WHERE amt >= 10000;", res: [{'count(*)':2}], hint: "WHERE amt >= 10000 조건을 추가하세요." },
+              { id: 4, goal: "[상황: 고객 단가 확인]\n1회 결제 시 유저들의 평균 결제액(객단가)을 구하고,\n그 컬럼의 이름을 'avg_amt'로 명명하세요.", target: "avg_amt", answer: "SELECT AVG(amt) AS avg_amt FROM sales;", res: [{avg_amt:9500}], hint: "AVG(amt) AS avg_amt" },
+              { id: 5, goal: "[상황: 최대 실적 탐색]\n이벤트 성과를 확인하기 위해,\n전체 데이터 중 한 번에 결제된 가장 높은 매출액을 찾으세요.", target: "MAX(amt)", answer: "SELECT MAX(amt) FROM sales;", res: [{'max(amt)':15000}], hint: "MAX(amt) 함수를 사용하세요." },
+              { id: 6, goal: "[상황: 최저가 방어선 확인]\n수박의 할인이 너무 심하게 들어간 건 없는지 확인하려 합니다.\ncategory가 '수박'인 건 중 가장 낮은 매출액을 구하세요.", target: "MIN(amt)", answer: "SELECT MIN(amt) FROM sales WHERE category = '수박';", res: [{'min(amt)':5000}], hint: "WHERE 조건을 먼저 적용한 뒤, MIN(amt) 함수를 사용하세요." },
+              { id: 7, goal: "[상황: 재방문 고객 파악]\n이벤트 기간 동안 발생한 전체 결제 건수와, 실제 결제한 '고유 고객 수'를 비교하려 합니다.\nCOUNT(cust_id)와 COUNT(DISTINCT cust_id)를 함께 조회하여 차이를 확인하세요.", target: "결제건수, 고유고객수", answer: "SELECT COUNT(cust_id), COUNT(DISTINCT cust_id) FROM sales;", res: [{'count(cust_id)':4, 'count(distinct cust_id)':3}], hint: "COUNT(cust_id), COUNT(DISTINCT cust_id) 형태로 작성하세요." }
             ]
           },
           {
             step: 4,
             title: "그룹화, 필터링 및 정렬",
-            grammar: "GROUP BY, HAVING & ORDER BY",
+            grammar: "GROUP BY, HAVING\n& ORDER BY",
             subtitle: "기준별 데이터 묶기와 결과 정렬",
-            theory: "데이터를 특정 기준(지역, 카테고리 등)으로 그룹화하고, 조건을 건 뒤, 최종 결과를 정렬합니다.\n\n[왜 GROUP BY로 묶어야 할까요?]\n집계 함수(SUM, COUNT 등)는 테이블 전체를 한 덩어리로 뭉뚱그려 계산합니다.\n\n만약 '지역별'처럼 쪼개서 결과를 보고 싶다면, 반드시 GROUP BY 절을 사용하여 '어떤 컬럼을 기준으로 묶을지' DB에 명확히 알려주어야 합니다.\n\n[GROUP BY (그룹화)]\n지정한 컬럼의 값이 같은 데이터들을 하나의 그룹으로 묶어줍니다.\n\n엑셀의 피벗 테이블에서 '행'에 기준을 넣는 것과 같습니다.\n\n[WHERE와 HAVING의 치명적 차이: 왜 구분해야 할까?]\nWHERE는 데이터를 '그룹으로 묶기 전(원본 상태)'에 필터링하고, HAVING은 데이터를 '그룹으로 묶은 후(집계 완료 상태)'에 필터링합니다.\n\n예를 들어, \"개별 결제액이 1000원 이상인 건들만 모아 지역별 합계를 구해라\"는 WHERE의 역할이고, \"지역별 합계를 먼저 낸 뒤, 그 총합이 5000원 이상인 지역만 남겨라\"는 HAVING의 역할입니다.\n\n컴퓨터는 WHERE 절을 처리할 때 아직 SUM이나 COUNT의 결과를 모르기 때문에, 집계 함수는 반드시 HAVING에서만 써야 에러가 나지 않습니다.\n\n[HAVING (그룹 결과 필터링)]\nGROUP BY로 묶여서 계산된 '최종 집계 결과(예: 지역별 총 매출)'에 조건을 걸어 필터링합니다.\n\n개별 데이터를 거르는 WHERE와 역할이 다릅니다.\n\n[ORDER BY (정렬)]\n모든 작업이 끝난 최종 결과를 보기 좋게 정렬합니다.\n\n기본값은 오름차순(ASC)이며, 내림차순은 DESC를 붙입니다.\n\n※ SELECT에 없는 컬럼으로 정렬이 가능한가요?\n네, 가능합니다!\n\nSQL의 논리적 실행 순서는 `FROM → WHERE → SELECT → ORDER BY` 입니다.\n\nORDER BY가 실행되는 시점엔 이미 FROM에서 원본 테이블을 불러왔기 때문에, 화면에 출력(SELECT)하지 않는 원본 컬럼이라도 정렬 기준으로 삼을 수 있습니다.",
+            theory: "데이터를 특정 기준(지역, 카테고리 등)으로 그룹화하고, 조건을 건 뒤, 최종 결과를 정렬합니다.\n\n[왜 GROUP BY로 묶어야 할까요?]\n집계 함수(SUM, COUNT 등)는 테이블 전체를 한 덩어리로 뭉뚱그려 계산합니다.\n\n만약 '지역별'처럼 쪼개서 결과를 보고 싶다면, 반드시 GROUP BY 절을 사용하여 '어떤 컬럼을 기준으로 묶을지' DB에 명확히 알려주어야 합니다.\n\n[GROUP BY (그룹화)]\n지정한 컬럼의 값이 같은 데이터들을 하나의 그룹으로 묶어줍니다.\n\n엑셀의 피벗 테이블에서 '행'에 기준을 넣는 것과 같습니다.\n\n[HAVING (그룹 결과 필터링)]\nGROUP BY로 묶여서 계산된 '최종 집계 결과(예: 지역별 총 매출)'에 조건을 걸어 필터링합니다.\n\n개별 데이터를 거르는 WHERE와 역할이 다릅니다.\n\n[WHERE와 HAVING의 치명적 차이: 왜 구분해야 할까?]\nWHERE는 데이터를 '그룹으로 묶기 전(원본 상태)'에 필터링하고, HAVING은 데이터를 '그룹으로 묶은 후(집계 완료 상태)'에 필터링합니다.\n\n예를 들어, \"개별 결제액이 1000원 이상인 건들만 모아 지역별 합계를 구해라\"는 WHERE의 역할이고, \"지역별 합계를 먼저 낸 뒤, 그 총합이 5000원 이상인 지역만 남겨라\"는 HAVING의 역할입니다.\n\n컴퓨터는 WHERE 절을 처리할 때 아직 SUM이나 COUNT의 결과를 모르기 때문에, 집계 함수는 반드시 HAVING에서만 써야 에러가 나지 않습니다.\n\n[ORDER BY (정렬)]\n모든 작업이 끝난 최종 결과를 보기 좋게 정렬합니다.\n\n기본값은 오름차순(ASC)이며, 내림차순은 DESC를 붙입니다.\n\n※ SELECT에 없는 컬럼으로 정렬이 가능한가요?\n\n네, 가능합니다!\n\nSQL의 논리적 실행 순서는 `FROM → WHERE → SELECT → ORDER BY` 입니다.\n\nORDER BY가 실행되는 시점엔 이미 FROM에서 원본 테이블을 불러왔기 때문에, 화면에 출력(SELECT)하지 않는 원본 컬럼이라도 정렬 기준으로 삼을 수 있습니다.",
             checkpoint: "실행 순서를 명확히 구분하세요.\n\n1) WHERE (그룹화 전 필터)\n2) GROUP BY (그룹화)\n3) HAVING (그룹 결과 필터)\n4) ORDER BY (가장 마지막에 실행되며, SELECT에서 만든 별칭을 사용할 수 있습니다.)",
             targetTable: "sales_region",
             exampleData: { "sales_region": [
@@ -186,7 +187,7 @@
             title: "조건에 따라 나누기",
             grammar: "CASE WHEN",
             subtitle: "조건에 따라 새로운 카테고리(이름표) 만들기",
-            theory: "데이터의 값에 따라 조건별로 새로운 기준(이름표)을 부여하고 싶을 때 사용하는 구문입니다.\n\n[Excel IF 함수와의 비교]\n엑셀의 IF 함수(또는 IFS)와 완벽하게 동일한 역할을 합니다.\n\n엑셀에서 =IF(A2>100, \"VIP\", \"일반\") 라고 쓰는 것을, SQL에서는 CASE WHEN 구문을 활용해 직관적으로 나열할 뿐입니다.\n\n[사용 방법]\nSELECT \n  CASE \n    WHEN 기준컬럼 > 100 THEN 'VIP' \n    ELSE '일반' \n  END AS 등급 \nFROM 테이블\n;\n\n여러 개의 WHEN을 사용하여 다중 조건을 설정할 수 있으며, 구문 끝에는 반드시 END 를 붙여 닫아주어야 합니다.",
+            theory: "데이터의 값에 따라 조건별로 새로운 기준(이름표)을 부여하고 싶을 때 사용하는 구문입니다.\n\n[Excel IF 함수와의 비교]\n엑셀의 IF 함수(또는 IFS)와 완벽하게 동일한 역할을 합니다.\n\n엑셀에서 =IF(A2>100, \"VIP\", \"일반\") 라고 쓰는 것을, SQL에서는 CASE WHEN 구문을 활용해 직관적으로 나열할 뿐입니다.\n\n[사용 방법]\nSELECT \n  CASE \n    WHEN 기준컬럼 > 100 THEN 'VIP' \n    ELSE '일반' \n  END AS 등급 \nFROM 테이블\n;\n\n여러 개의 WHEN을 사용하여 다중 조건을 설정할 수 있으며, 구문의 끝에는 반드시 END 를 붙여 닫아주어야 합니다.",
             checkpoint: "ELSE를 생략하면 조건에 해당하지 않는 데이터는 모두 텅 빈 값(NULL)이 됩니다.\n방어적 코딩을 위해 무조건 ELSE를 적는 습관을 들이세요.",
             targetTable: "user_activity",
             exampleData: { 
@@ -222,7 +223,7 @@
             title: "테이블 합치기",
             grammar: "JOIN",
             subtitle: "분산된 데이터의 결합과 1:N 관계",
-            theory: "서로 다른 테이블에 흩어진 정보를 공통된 연결 고리(ID 등)를 기준으로 하나로 모읍니다.\n\n[JOIN의 1:N 뻥튀기(Fan-out) 현상]\nA테이블에 아이디가 1개인데, B테이블에 같은 아이디가 3개 있다면? JOIN 결과는 3줄로 늘어납니다.\n\n데이터 분석 시 가장 흔한 실수이므로, 반드시 1:1 관계인지 1:N 관계인지 확인해야 합니다.\n\n[JOIN 유형별 실제 예시]\n<div class='flex flex-wrap gap-6 my-6'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-48'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>계약내역 (A)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>계약ID</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>유저</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='px-4 py-2 text-center font-bold text-blue-600'>유저A</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>계약2</td><td class='px-4 py-2 text-center text-slate-600'>유저B</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-56'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>접속기록 (B)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>유저</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>유저C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div></div>\n1. LEFT JOIN (A의 모든 데이터 보존)\n유저A의 접속기록이 2개이므로 계약1이 2줄로 뻥튀기됩니다.\n\nB에 없는 유저B의 접속기록은 NULL이 됩니다.\n<div class='my-4 border border-blue-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>계약ID</th><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-blue-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>계약2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr></tbody></table></div>\n2. INNER JOIN (양쪽에 모두 있는 교집합)\n양쪽에 모두 존재하는 유저A의 데이터만 뻥튀기되어 남습니다.\n<div class='my-4 border border-emerald-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-emerald-50 border-b border-emerald-100'><tr><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>계약ID</th><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-emerald-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr></tbody></table></div>\n3. FULL OUTER JOIN (합집합)\n어느 한쪽에만 있는 유저B와 유저C의 데이터도 모두 빈칸(NULL)을 채워 남깁니다.\n<div class='my-4 border border-purple-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-purple-50 border-b border-purple-100'><tr><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>계약ID</th><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-purple-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div>",
+            theory: "서로 다른 테이블에 흩어진 정보를 공통된 연결 고리(ID 등)를 기준으로 하나로 모읍니다.\n\n[JOIN의 1:N 뻥튀기(Fan-out) 현상]\nA테이블에 아이디가 1개인데, B테이블에 같은 아이디가 3개 있다면? JOIN 결과는 3줄로 늘어납니다.\n\n데이터 분석 시 가장 흔한 실수이므로, 반드시 1:1 관계인지 1:N 관계인지 확인해야 합니다.\n\n[JOIN 유형별 실제 예시]\n<div class='flex flex-wrap gap-6 my-6'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-48'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>계약내역 (A)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>계약ID</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>유저</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='px-4 py-2 text-center font-bold text-blue-600'>유저A</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>계약2</td><td class='px-4 py-2 text-center text-slate-600'>유저B</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-56'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>접속기록 (B)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>유저</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>유저C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div></div>\n\n[1. LEFT JOIN (A의 모든 데이터 보존)]\n유저A의 접속기록이 2개이므로 계약1이 2줄로 뻥튀기됩니다.\n\nB에 없는 유저B의 접속기록은 NULL이 됩니다.\n\n<div class='my-4 border border-blue-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>계약ID</th><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-blue-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>계약2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr></tbody></table></div>\n\n[2. INNER JOIN (양쪽에 모두 있는 교집합)]\n양쪽에 모두 존재하는 유저A의 데이터만 뻥튀기되어 남습니다.\n\n<div class='my-4 border border-emerald-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-emerald-50 border-b border-emerald-100'><tr><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>계약ID</th><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-emerald-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr></tbody></table></div>\n\n[3. FULL OUTER JOIN (합집합)]\n어느 한쪽에만 있는 유저B와 유저C의 데이터도 모두 빈칸(NULL)을 채워 남깁니다.\n\n<div class='my-4 border border-purple-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-purple-50 border-b border-purple-100'><tr><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>계약ID</th><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-purple-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>계약2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div>",
             checkpoint: "JOIN 시 기준 키에 중복이 있으면 데이터가 뻥튀기(Fan-out)될 수 있습니다.\n테이블 간의 관계(키가 유일한지)를 먼저 파악하세요.",
             targetTable: "orders & users",
             exampleData: { 
@@ -314,7 +315,7 @@
             grammar: "SUBQUERY",
             subtitle: "질문 안의 질문으로 복잡한 조건 해결하기",
             theory: "[1. 서브쿼리 개념]\n데이터를 분석하다 보면 하나의 쿼리만으로는 원하는 결과를 얻기 어려울 때가 있습니다.\n\n이때 쿼리 안쪽에 또 다른 쿼리를 중첩하여 실행하는 방식을 '서브쿼리(Subquery)'라고 부릅니다.\n\n서브쿼리는 반드시 괄호 `()`로 감싸야 하며, 시스템은 안쪽에 있는 서브쿼리를 먼저 실행한 후 그 결과를 바깥쪽 메인 쿼리에 전달합니다.\n\n[2. WHERE 절 서브쿼리 개념]\nWHERE 절 서브쿼리의 핵심 목적은 단순히 수학적인 '연산'을 하기 위함이 아닙니다.\n\n가장 중요한 역할은 현재 테이블의 데이터를 필터링하기 위해, 다른 데이터 집합의 결과를 '조건'으로 끌어와 비교하는 데 있습니다.\n\n[3. WHERE 절 서브쿼리를 사용하는 상황]\n<div class='mt-6 space-y-10'>\n  <div>\n    <div class='font-black text-lg text-slate-800 mb-2'>상황 A. 데이터 집합 포함 여부 (IN / NOT IN)</div>\n    <p class='text-slate-600 mb-4 break-keep'>수학적 단일 값 연산이 아니라, 특정 조건에 맞는 여러 개의 데이터 목록(집합)에 현재 행의 값이 포함되는지 확인할 때 주로 사용합니다.</p>\n    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 서울에 위치한 부서에서 근무하는 직원만 찾기</div>\n    <div class='bg-slate-800 text-blue-300 p-5 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE dept_id IN \n  (SELECT dept_id \n   FROM departments \n   WHERE location = 'Seoul')</div>\n  </div>\n  <div>\n    <div class='font-black text-lg text-slate-800 mb-2'>상황 B. 연관 데이터 존재 여부 (EXISTS / NOT EXISTS)</div>\n    <p class='text-slate-600 mb-4 break-keep'>다른 테이블에 조건을 만족하는 연관 데이터가 존재하는지(True/False) 논리적 판별을 할 때 사용합니다.\n\n데이터의 존재 유무만 확인하므로 복잡한 연산 없이 처리 속도가 매우 빠릅니다.</p>\n    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 주문 이력이 최소 1건 이상 존재하는 고객만 찾기</div>\n    <div class='bg-slate-800 text-blue-300 p-5 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE EXISTS \n  (SELECT 1 \n   FROM orders o \n   WHERE o.cust_id = c.cust_id)</div>\n  </div>\n  <div>\n    <div class='font-black text-lg text-slate-800 mb-2'>상황 C. 단일 값과의 비교 필터링</div>\n    <p class='text-slate-600 mb-4 break-keep'>집계 함수(AVG, MAX, MIN 등)를 통해 도출된 단일 값을 기준으로, 그 값보다 크거나 작은 데이터를 필터링할 때 사용합니다.</p>\n    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 전사 평균 급여보다 급여를 많이 받는 직원 찾기</div>\n    <div class='bg-slate-800 text-blue-300 p-5 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE salary > \n  (SELECT AVG(salary) \n   FROM employees)</div>\n  </div>\n</div>\n\n[4. FROM 절 서브쿼리 (인라인 뷰) 개념]\nFROM 절 서브쿼리의 핵심은 '실재하지 않는 가상의 테이블을 메모리 상에 임시로 만들어내어, 새로운 데이터 소스로 활용하는 것'입니다.\n\n데이터베이스에 물리적인 테이블을 새로 만들지 않더라도, 내가 원하는 형태로 1차 가공한 결과를 임시 테이블(인라인 뷰)처럼 쓸 수 있게 해줍니다.\n\n[5. FROM 절 서브쿼리를 사용하는 상황]\n<div class='mt-6 space-y-10'>\n  <div>\n    <div class='font-black text-lg text-slate-800 mb-2'>상황 A. SQL 실행 순서의 한계 극복 (다단계 가공)</div>\n    <p class='text-slate-600 mb-4 break-keep'>SQL은 내부적인 실행 순서(FROM → WHERE → GROUP BY → SELECT)가 정해져 있습니다.\n\n따라서 SELECT 절에서 새롭게 계산하여 만든 컬럼을 동일한 레벨의 WHERE 절에서 필터 조건으로 쓸 수 없는 모순이 발생합니다.\n\n이를 극복하기 위해 사용합니다.</p>\n    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) SELECT에서 계산한 총액(total)이 1000 이상인 것만 필터링하기</div>\n    <div class='bg-slate-800 text-blue-300 p-5 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * \nFROM \n  (SELECT id, price * qty AS total \n   FROM orders) \nWHERE total > 1000</div>\n  </div>\n  <div>\n    <div class='font-black text-lg text-slate-800 mb-2'>상황 B. 조인(JOIN) 전 사전 집계 및 데이터 경량화</div>\n    <p class='text-slate-600 mb-4 break-keep'>대용량 테이블을 그대로 조인하면 연산량이 폭발하거나 중복 데이터가 늘어나는 카테시안 곱(Cartesian Product) 현상이 생길 수 있습니다.\n\n이를 막기 위해 FROM 절 안에서 서브쿼리로 데이터를 먼저 요약하고 가볍게 만든 뒤에 조인을 수행합니다.</p>\n    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 직원 테이블과 부서별 평균 급여 테이블을 조인하기</div>\n    <div class='bg-slate-800 text-blue-300 p-5 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * \nFROM employees e \nJOIN \n  (SELECT dept_id, AVG(salary) AS avg_sal \n   FROM employees \n   GROUP BY dept_id) a \nON e.dept_id = a.dept_id</div>\n  </div>\n  <div>\n    <div class='font-black text-lg text-slate-800 mb-2'>상황 C. Top-N 쿼리 및 윈도우 함수 필터링</div>\n    <p class='text-slate-600 mb-4 break-keep'>데이터에 순위(ROW_NUMBER, RANK 등)를 매긴 뒤, \"상위 3명만 뽑아라\"와 같은 조건을 걸 때 사용합니다.\n\n문법 규칙상 윈도우 함수는 WHERE 절에 직접 들어갈 수 없기 때문에 서브쿼리가 강제됩니다.</p>\n    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 부서별 급여 1등 직원만 추출하기</div>\n    <div class='bg-slate-800 text-blue-300 p-5 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * \nFROM \n  (SELECT name, ROW_NUMBER() OVER(PARTITION BY dept_id ORDER BY salary DESC) AS rn \n   FROM employees) \nWHERE rn = 1</div>\n  </div>\n</div>",
-            checkpoint: "서브쿼리가 단일 값(스칼라)을 반환하는지, 여러 행(리스트)을 반환하는지 구분해야 합니다.\n여러 개의 값을 반환할 때는 '=' 연산자 대신 'IN' 연산자를 써야 에러가 발생하지 않습니다.",
+            checkpoint: "서브쿼리가 단일 값(스칼라)을 반환하는지, 여러 행(리스트)을 반환하는지 구분해야 합니다.\n\n여러 개의 값을 반환할 때는 '=' 연산자 대신 'IN' 연산자를 써야 에러가 발생하지 않습니다.",
             targetTable: "employees",
             exampleData: { 
               "employees": [
@@ -365,7 +366,7 @@
             mockResult: [{ dt: '2026-05-01', amt: 300 }],
             exercises: [
               { id: 1, goal: "[상황: 기초 테이블 세팅]\n데이터 분석가로서 복잡한 쿼리를 짜기 전, daily_sales 전체를 담은 'base'라는 임시 테이블을 WITH문으로 선언하고\n전체(*)를 조회해 보세요.", target: "*", answer: "WITH base AS (SELECT * FROM daily_sales) SELECT * FROM base;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-01', amt:200, item:'B'},{dt:'2026-05-02', amt:100, item:'B'},{dt:'2026-05-02', amt:400, item:'A'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH base AS (...) SELECT * FROM base" },
-              { id: 2, goal: "[상황: 조건부 임시 테이블]\n금액(amt)이 150 이상인 우수 실적만 모아둔 'high'라는 임시 테이블을 만들고\n전체(*)를 조회하세요.", target: "*", answer: "WITH high AS (SELECT * FROM daily_sales WHERE amt >= 150) SELECT * FROM high;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-01', amt:200, item:'B'},{dt:'2026-05-02', amt:400, item:'A'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH 문 안에 WHERE 절을 넣으세요." },
+              { id: 2, goal: "[상황: 가공 데이터 블록 생성]\n기존 매출액(amt)에 2를 곱해 예상 매출(d_amt)을 만든 'double' 임시 테이블을 선언하고\n조회하세요.", target: "d_amt", answer: "WITH double AS (SELECT amt * 2 AS d_amt FROM daily_sales) SELECT * FROM double;", res: [{d_amt:600},{d_amt:400},{d_amt:200},{d_amt:800},{d_amt:1000}], hint: "SELECT amt * 2 AS d_amt" },
               { id: 3, goal: "[상황: 일별 집계 테이블]\n마케팅팀의 요청으로 일자별(dt) 매출 합계를 계산(별칭: s)해둔 'tmp' 임시 테이블을 구성하고\n전체(*)를 조회하세요.", target: "dt, s", answer: "WITH tmp AS (SELECT dt, SUM(amt) AS s FROM daily_sales GROUP BY dt) SELECT * FROM tmp;", res: [{dt:'2026-05-01', s:500},{dt:'2026-05-02', s:500},{dt:'2026-05-03', s:500}], hint: "GROUP BY를 포함합니다." }
             ]
           },
@@ -389,7 +390,7 @@
             example: "SELECT * \nFROM (\n  SELECT \n    *, \n    ROW_NUMBER() OVER(\n      PARTITION BY cust_id \n      ORDER BY time DESC\n    ) AS rn\n  FROM login_log\n)\nWHERE rn = 1\n;",
             mockResult: [{ cust_id: 'A', time: '12:00' }],
             exercises: [
-              { id: 1, goal: "[상황: 유저별 번호 부여]\n유저(cust_id)별 접속 패턴을 보기 위해, 유저 단위로 파티션(그룹)을 나누고 시간 역순(DESC) 정렬하여 번호(rn)를 매겨보세요.\n\n(※ 가상 엔진 특성상 새롭게 연산된 rn 컬럼이 결과 표의 첫 번째 열로 출력될 수 있으나 정상입니다.)", target: "전체 컬럼(*), rn", answer: "SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time DESC) AS rn FROM login_log;", res: [{cust_id:'A', time:'12:00', device:'Mobile', rn:1},{cust_id:'A', time:'10:00', device:'PC', rn:2},{cust_id:'B', time:'13:00', device:'Mobile', rn:1},{cust_id:'B', time:'11:00', device:'PC', rn:2}], hint: "PARTITION BY cust_id ORDER BY time DESC 를 사용하세요." },
+              { id: 1, goal: "[상황: 유저별 번호 부여]\n유저(cust_id)별 접속 패턴을 보기 위해, 유저 단위로 파티션(그룹)을 나누어\n번호(user_rn)를 매겨보세요.\n\n(※ 가상 엔진 특성상 새롭게 연산된 rn 컬럼이 결과 표의 첫 번째 열로 출력될 수 있으나 정상입니다.)", target: "user_rn 포함", answer: "SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id) AS user_rn FROM login_log;", res: [{cust_id:'A', time:'10:00', device:'PC', user_rn:1},{cust_id:'A', time:'12:00', device:'Mobile', user_rn:2},{cust_id:'B', time:'11:00', device:'PC', user_rn:1},{cust_id:'B', time:'13:00', device:'Mobile', user_rn:2}], hint: "PARTITION BY cust_id 를 사용하세요." },
               { id: 2, goal: "[상황: 최신 접속 로그 추출]\n보안팀에서 유저별로 가장 마지막(최근)에 접속한 단 1건의 로그(*)만 필요하다고 합니다.\n서브쿼리를 사용해 추출하세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time DESC) AS rn FROM login_log) WHERE rn = 1;", res: [{cust_id:'A', time:'12:00', device:'Mobile'},{cust_id:'B', time:'13:00', device:'Mobile'}], hint: "FROM 절 서브쿼리로 먼저 rn을 만든 후 WHERE rn = 1 조건을 줍니다." },
               { id: 3, goal: "[상황: 최초 접속 로그 추출]\n마케팅팀에서 유저별 가장 첫(오래된) 접속 로그(*)를 분석하여 유입 채널을 보려 합니다.\n순번을 오름차순(ASC)으로 매겨 1번을 찾으세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time ASC) AS rn FROM login_log) WHERE rn = 1;", res: [{cust_id:'A', time:'10:00', device:'PC'},{cust_id:'B', time:'11:00', device:'PC'}], hint: "ORDER BY time ASC 를 사용하세요." }
             ]
@@ -433,17 +434,24 @@
             if (part.startsWith('[') && part.endsWith(']')) {
               const title = part.slice(1, -1);
               return (
-                <span key={index} className="block w-fit bg-blue-50 text-blue-700 px-5 py-2 rounded-full text-sm font-black mt-8 mb-3 border border-blue-200 shadow-sm tracking-wide whitespace-normal">
+                <div key={index} className="inline-flex items-center w-fit bg-blue-50 text-blue-700 px-5 py-2 rounded-full text-[14px] font-black mt-10 mb-3 border border-blue-200 shadow-sm">
                   {title}
-                </span>
+                </div>
               );
             }
+            
             let textContent = part;
+            // 뱃지 다음의 텍스트는 선행 줄바꿈 제거 (뱃지 margin으로 여백 조절)
             if (index > 0 && parts[index - 1].startsWith('[')) {
               textContent = textContent.replace(/^\n+/, '');
             }
+            // 뱃지 이전의 텍스트는 후행 줄바꿈 제거 (뱃지 margin으로 여백 조절)
+            if (index < parts.length - 1 && parts[index + 1].startsWith('[')) {
+              textContent = textContent.replace(/\n+$/, '');
+            }
+            
             // 텍스트 내에 포함된 HTML 태그(table 등)를 안전하게 렌더링
-            return <span key={index} dangerouslySetInnerHTML={{ __html: textContent }} />;
+            return <div key={index} className="whitespace-pre-wrap text-slate-700 leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: textContent }} />;
           });
         };
 
@@ -470,20 +478,9 @@
               if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
               if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
 
-              // [핵심 조치] 가상 엔진의 문자열 비교 성능 강화를 위해 괄호, 콤마, 등호 주변 공백 완전 무시
-              const normalizeSqlString = (str) => {
-                  return str.trim().toLowerCase()
-                      .replace(/\s+/g, ' ')
-                      .replace(/\s*\(\s*/g, '(')
-                      .replace(/\s*\)\s*/g, ')')
-                      .replace(/\s*,\s*/g, ',')
-                      .replace(/\s*=\s*/g, '=')
-                      .replace(/\s*>\s*/g, '>')
-                      .replace(/\s*<\s*/g, '<');
-              };
-
-              const normalizedInput = normalizeSqlString(input);
-              const normalizedAnswer = normalizeSqlString(currentEx.answer);
+              // [공백 철벽 방어 로직] 괄호, 기호 주변 및 모든 연속된 공백 무시
+              const noSpaceInput = input.trim().replace(/\s+/g, ' ').replace(/\s*\(\s*/g, '(').replace(/\s*\)\s*/g, ')').replace(/\s*=\s*/g, '=').replace(/\s*>\s*/g, '>').replace(/\s*<\s*/g, '<').replace(/\s*;\s*/g, ';').toLowerCase();
+              const noSpaceAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').replace(/\s*\(\s*/g, '(').replace(/\s*\)\s*/g, ')').replace(/\s*=\s*/g, '=').replace(/\s*>\s*/g, '>').replace(/\s*<\s*/g, '<').replace(/\s*;\s*/g, ';').toLowerCase();
 
               let executedData = null;
               let executionError = null;
@@ -491,8 +488,7 @@
               let showSuccessMessageInsteadOfData = false;
               let isWindowFunction = false;
               
-              // 텍스트 완벽 일치 판별 (문자열 일치 시 버그와 무관하게 무조건 통과)
-              const isStringCorrect = normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '') || normalizedInput + ';' === normalizedAnswer;
+              const isStringCorrect = noSpaceInput === noSpaceAnswer || noSpaceInput === noSpaceAnswer.replace(/;$/, '') || noSpaceInput + ';' === noSpaceAnswer;
               
               try {
                   const alasql = window.alasql;
@@ -515,7 +511,7 @@
 
                   sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
 
-                  // 서브쿼리 내부의 GROUP BY 1 도 처리할 수 있도록, GROUP BY 바로 앞의 가장 가까운 SELECT 절을 동적으로 찾아 매핑
+                  // [핵심 조치] 서브쿼리 내부의 GROUP BY 1 도 처리할 수 있도록, GROUP BY 바로 앞의 가장 가까운 SELECT 절을 동적으로 찾아 매핑
                   sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
                       const upToMatch = string.substring(0, offset);
                       const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
@@ -552,11 +548,11 @@
                   executedData = alasql(sqlForAlasql);
                   
                   if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
-                      if (normalizedAnswer.includes('create or replace table') && !normalizedInput.includes('create or replace table')) {
+                      if (noSpaceAnswer.includes('createorreplacetable') && !noSpaceInput.includes('createorreplacetable')) {
                           isDataCorrect = false;
                           executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
                       } else {
-                          const isOrderRequired = currentEx.goal.includes('정렬') || normalizedAnswer.includes('order by') || normalizedAnswer.includes('limit');
+                          const isOrderRequired = currentEx.goal.includes('정렬') || noSpaceAnswer.includes('orderby') || noSpaceAnswer.includes('limit');
                           const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
 
                           const normalize = (data, sortRows) => {
@@ -600,10 +596,10 @@
               } catch (err) {
                   executionError = "실행 오류: " + err.message;
                   
-                  if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parse error')) {
+                  if (noSpaceInput.includes('where') && noSpaceInput.match(/where.*,/i) && err.message.toLowerCase().includes('parse error')) {
                       executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
                   }
-                  if (normalizedInput.includes('count(distinct(')) {
+                  if (noSpaceInput.includes('count(distinct(')) {
                       executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
                   }
               }
@@ -616,8 +612,15 @@
                   }
               }
 
+              // [엔진 버그 보완] 10단계 윈도우 함수 + 서브쿼리 버그 강제 복원 
+              if (isStringCorrect && currentEx.goal.includes('추출') && finalData.length > 0 && finalData[0].rn) {
+                 if(Object.keys(finalData[0]).length === 1) {
+                     executionError = "💡 [분석가 팁] 작성하신 쿼리는 실무에서 100% 정상 작동하는 완벽한 정답입니다! 결과 표에 전체 컬럼이 안 나오는 것은 가상 엔진(Alasql)의 서브쿼리 내 SELECT * 증발 버그 때문이며, 정답 처리와 함께 원본 결과표를 복원해 드립니다.";
+                 }
+              }
+
               if (currentEx.goal && currentEx.goal.includes('비정상 결제 탐지')) {
-                  if (normalizedInput.includes('name is null') && !/[a-z0-9_`]+\.name\s+is\s+null/i.test(normalizedInput)) {
+                  if (noSpaceInput.includes('nameisnull') && !/[a-z0-9_`]+\.nameisnull/i.test(noSpaceInput)) {
                       return {
                           success: false,
                           data: finalData,
@@ -627,27 +630,27 @@
               }
 
               const rules = [
-                  { keyword: 'group by', condition: normalizedAnswer.includes('group by'), error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." },
-                  { keyword: 'order by', condition: currentEx.goal.includes('정렬') || normalizedAnswer.includes('order by'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
-                  { keyword: 'with', condition: /\bwith\b/.test(normalizedAnswer), boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
-                  { keyword: '(select', condition: normalizedAnswer.includes('(select'), alt: '(select', error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
-                  { keyword: 'row_number', condition: normalizedAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
-                  { keyword: 'concat', condition: normalizedAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
-                  { keyword: 'substr', condition: normalizedAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
-                  { keyword: 'distinct', condition: normalizedAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
+                  { keyword: 'groupby', condition: noSpaceAnswer.includes('groupby'), error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." },
+                  { keyword: 'orderby', condition: currentEx.goal.includes('정렬') || noSpaceAnswer.includes('orderby'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
+                  { keyword: 'with', condition: /\bwith\b/.test(noSpaceAnswer), boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
+                  { keyword: '(select', condition: noSpaceAnswer.includes('(select'), alt: '(select', error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
+                  { keyword: 'row_number', condition: noSpaceAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
+                  { keyword: 'concat', condition: noSpaceAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
+                  { keyword: 'substr', condition: noSpaceAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
+                  { keyword: 'distinct', condition: noSpaceAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
               ];
 
               for (const rule of rules) {
                   if (rule.condition) {
-                      let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(normalizedInput) : normalizedInput.includes(rule.keyword);
-                      if (rule.alt && !hasKeyword) hasKeyword = normalizedInput.includes(rule.alt);
+                      let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(noSpaceInput) : noSpaceInput.includes(rule.keyword);
+                      if (rule.alt && !hasKeyword) hasKeyword = noSpaceInput.includes(rule.alt);
                       if (!hasKeyword) {
-                          return { success: false, data: finalData, error: rule.error }; 
+                          return { success: false, data: finalData, error: rule.error };
                       }
                   }
               }
 
-              if (/\bas\s+['"][^'"]+['"]/i.test(normalizedInput)) {
+              if (/\bas['"][^'"]+['"]/i.test(noSpaceInput)) {
                   return {
                       success: false,
                       data: finalData,
@@ -657,12 +660,6 @@
               
               if (isDataCorrect || isStringCorrect) {
                 let displayData = isDataCorrect ? finalData : currentEx.res; 
-                
-                // 엔진 버그 설명 메시지 우회 추가
-                if (isStringCorrect && !isDataCorrect && currentData.step === 10) {
-                     executionError = "💡 [분석가 팁] 작성하신 쿼리는 실무(BigQuery)에서 완벽한 정답입니다! 현재 표에 원본 컬럼이 안 보이는 것은 가상 엔진(Alasql)이 서브쿼리 내의 SELECT * 을 무시하는 버그 때문이며, 정답 처리 완료되었습니다.";
-                }
-
                 if (showSuccessMessageInsteadOfData) {
                     displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
                 }
