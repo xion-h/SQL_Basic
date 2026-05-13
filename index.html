@@ -405,13 +405,18 @@
             exampleData: { 
               "raw_data": [
                 { cust_id: 'A', amt: 5000 },
-                { cust_id: 'B', amt: 7000 }
+                { cust_id: 'B', amt: 7000 },
+                { cust_id: 'A', amt: 3000 }
               ] 
             },
             exerciseData: { 
               "raw_data": [
                 { cust_id: 'A', amt: 5000 },
-                { cust_id: 'B', amt: 7000 }
+                { cust_id: 'B', amt: 7000 },
+                { cust_id: 'A', amt: 3000 },
+                { cust_id: 'C', amt: 2000 },
+                { cust_id: 'B', amt: 6000 },
+                { cust_id: 'A', amt: 1000 }
               ] 
             },
             goal: "raw_data를 모두 담은 'my_summary'라는 테이블을 새로 생성하기",
@@ -419,9 +424,9 @@
             example: "CREATE OR REPLACE TABLE my_summary AS \nSELECT \n  * \nFROM raw_data\n;",
             mockResult: [{ status: '성공', message: '테이블 my_summary 생성 완료 (출력 데이터 없음)' }],
             exercises: [
-              { id: 1, goal: "[상황: 원본 백업]\n대규모 업데이트 전, raw_data 테이블의 전체 내용(*)을 담아\n'backup_data'라는 이름의 물리적 테이블로 안전하게 복사해 두세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;", res: [{cust_id:'A', amt:5000},{cust_id:'B', amt:7000}], hint: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;" },
-              { id: 2, goal: "[상황: VIP 데이터 마트 생성]\nVIP 관리를 위해 amt가 6000 이상인 고액 결제 데이터만 따로 모아\n'high_value'라는 테이블로 영구 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE high_value AS SELECT * FROM raw_data WHERE amt >= 6000;", res: [{cust_id:'B', amt:7000}], hint: "SELECT 문 뒤에 WHERE amt >= 6000 을 추가하세요." },
-              { id: 3, goal: "[상황: 유저별 집계 마트]\n마케팅 캠페인에 즉시 활용할 수 있도록, 고객(cust_id)별 매출 합계를 계산한 결과를\n'user_summary'라는 테이블로 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE user_summary AS SELECT cust_id, SUM(amt) FROM raw_data GROUP BY cust_id;", res: [{cust_id:'A', 'sum(amt)':5000},{cust_id:'B', 'sum(amt)':7000}], hint: "SELECT cust_id, SUM(amt) FROM raw_data GROUP BY cust_id 를 저장합니다." }
+              { id: 1, goal: "[상황: 원본 백업]\n대규모 업데이트 전, raw_data 테이블의 전체 내용(*)을 담아\n'backup_data'라는 이름의 물리적 테이블로 안전하게 복사해 두세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;", res: [{cust_id:'A', amt:5000},{cust_id:'B', amt:7000},{cust_id:'A', amt:3000},{cust_id:'C', amt:2000},{cust_id:'B', amt:6000},{cust_id:'A', amt:1000}], hint: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;" },
+              { id: 2, goal: "[상황: VIP 데이터 마트 생성]\nVIP 관리를 위해 amt가 6000 이상인 고액 결제 데이터만 따로 모아\n'high_value'라는 테이블로 영구 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE high_value AS SELECT * FROM raw_data WHERE amt >= 6000;", res: [{cust_id:'B', amt:7000},{cust_id:'B', amt:6000}], hint: "SELECT 문 뒤에 WHERE amt >= 6000 을 추가하세요." },
+              { id: 3, goal: "[상황: 유저별 집계 마트]\n마케팅 캠페인에 즉시 활용할 수 있도록, 고객(cust_id)별 매출 합계를 계산한 결과를\n'user_summary'라는 테이블로 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE user_summary AS SELECT cust_id, SUM(amt) FROM raw_data GROUP BY cust_id;", res: [{cust_id:'A', 'sum(amt)':9000},{cust_id:'B', 'sum(amt)':13000},{cust_id:'C', 'sum(amt)':2000}], hint: "SELECT cust_id, SUM(amt) FROM raw_data GROUP BY cust_id 를 저장합니다." }
             ]
           }
         ];
@@ -473,231 +478,227 @@
 
         // --- 빅쿼리 시뮬레이터 실시간 검증 엔진 ---
         const bigQueryEngine = (input, currentEx, sourceDataObj) => {
-          try {
-              if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
-              if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
+            try {
+                if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
+                if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
 
-              // [핵심 조치] 공백 무시 스마트 해독 로직
-              let noSpaceInput = input.trim().replace(/\s+/g, ' ').replace(/\s*\(\s*/g, '(').replace(/\s*\)\s*/g, ')').replace(/\s*=\s*/g, '=').replace(/\s*>\s*/g, '>').replace(/\s*<\s*/g, '<').replace(/\s*;\s*/g, ';').toLowerCase();
-              let noSpaceAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').replace(/\s*\(\s*/g, '(').replace(/\s*\)\s*/g, ')').replace(/\s*=\s*/g, '=').replace(/\s*>\s*/g, '>').replace(/\s*<\s*/g, '<').replace(/\s*;\s*/g, ';').toLowerCase();
+                const normalizedInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
+                const normalizedAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
+                const goalText = currentEx.goal || currentEx.scenario || '';
+
+                let executedData = null;
+                let executionError = null;
+                let isDataCorrect = false;
+                let showSuccessMessageInsteadOfData = false;
+                
+                // [스마트 공백 해독기] 모든 공백을 제거하여 사용자가 어떻게 띄어쓰기를 하든 알맹이 논리만 비교
+                const noSpaceInput = normalizedInput.replace(/\s+/g, '');
+                const noSpaceAnswer = normalizedAnswer.replace(/\s+/g, '');
+                const isStringCorrect = noSpaceInput === noSpaceAnswer || noSpaceInput === noSpaceAnswer.replace(/;$/, '') || noSpaceInput + ';' === noSpaceAnswer;
+                
+                try {
+                    const alasql = window.alasql;
+                    if (!alasql) throw new Error("SQL 엔진 로딩 중입니다.");
+
+                    let sqlForAlasql = input.trim()
+                        .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
+                        .replace(/INT64/gi, 'INT');
+                        
+                    if (sqlForAlasql.toUpperCase().includes('QUALIFY')) {
+                        throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 직접 렌더링을 지원하지 않습니다. 서브쿼리를 이용해 주세요.");
+                    }
+
+                    const createTableMatch = sqlForAlasql.match(/CREATE\s+OR\s+REPLACE\s+TABLE\s+([a-zA-Z0-9_`]+)\s+AS/i);
+                    if (createTableMatch) {
+                        showSuccessMessageInsteadOfData = true;
+                        sqlForAlasql = sqlForAlasql.replace(/CREATE\s+OR\s+REPLACE\s+TABLE\s+[a-zA-Z0-9_`]+\s+AS/i, '');
+                    }
+
+                    sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
+
+                    const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
+                    let selectItems = [];
+                    if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
+                        selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
+                        
+                        sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
+                            const upToMatch = string.substring(0, offset);
+                            const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
+                            
+                            if (selectMatches.length > 0) {
+                                const lastSelect = selectMatches[selectMatches.length - 1][1];
+                                const localSelectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
+                                const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
+                                
+                                const cols = indices.map(idx => {
+                                    if (!isNaN(idx) && idx > 0 && idx <= localSelectItems.length) {
+                                        let item = localSelectItems[idx - 1];
+                                        if (!item) return String(idx);
+                                        let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
+                                        if (aliasMatch) return aliasMatch[1].trim();
+                                        return item.trim();
+                                    }
+                                    return String(idx);
+                                });
+                                return `GROUP BY ${cols.join(', ')}${rest}`;
+                            }
+                            return match;
+                        });
+                    }
               
-              // [완벽 해결] 띄어쓰기 0%의 순수 문자열을 추출하여 1=1 AND 우회 처리 완벽 호환
-              let strippedInput = input.replace(/\s+/g, '').toLowerCase().replace(/where1=1and/g, 'where');
-              let strippedAnswer = currentEx.answer.replace(/\s+/g, '').toLowerCase().replace(/where1=1and/g, 'where');
+                    Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
+                        alasql(`DROP TABLE IF EXISTS ${tbl}`);
+                        alasql(`CREATE TABLE ${tbl}`);
+                        if (!alasql.tables[tbl]) {
+                            alasql.tables[tbl] = { data: [] };
+                        }
+                        alasql.tables[tbl].data = JSON.parse(JSON.stringify(rows));
+                    });
+                    
+                    executedData = alasql(sqlForAlasql);
+                    
+                    if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
+                        if (normalizedAnswer.includes('create or replace table') && !normalizedInput.includes('create or replace table')) {
+                            isDataCorrect = false;
+                            executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
+                        } else {
+                            const isOrderRequired = goalText.includes('정렬') || normalizedAnswer.includes('order by') || normalizedAnswer.includes('limit');
+                            const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
 
-              let executedData = null;
-              let executionError = null;
-              let isDataCorrect = false;
-              let showSuccessMessageInsteadOfData = false;
-              let isWindowFunction = false;
-              
-              const isStringCorrect = strippedInput === strippedAnswer || strippedInput === strippedAnswer.replace(/;$/, '') || strippedInput + ';' === strippedAnswer;
-              
-              try {
-                  const alasql = window.alasql;
-                  if (!alasql) throw new Error("SQL 엔진 로딩 중입니다.");
+                            const normalizeValuesOnly = (data, sortRows) => {
+                                const mappedData = data.map(row => {
+                                    const vals = Object.values(row).map(v => v !== null && v !== undefined ? String(v) : 'NULL');
+                                    return JSON.stringify(vals);
+                                });
+                                return sortRows ? mappedData.sort() : mappedData;
+                            };
+                            
+                            const userValMatrix = normalizeValuesOnly(executedData, !isOrderRequired);
+                            const expValMatrix = normalizeValuesOnly(currentEx.res, !isOrderRequired);
+                            
+                            if (JSON.stringify(userValMatrix) === JSON.stringify(expValMatrix)) {
+                                isDataCorrect = true;
+                            }
 
-                  let sqlForAlasql = input.trim()
-                      .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
-                      .replace(/INT64/gi, 'INT');
-                      
-                  if (sqlForAlasql.toUpperCase().includes('QUALIFY')) {
-                      isWindowFunction = true;
-                      throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 직접 렌더링을 지원하지 않습니다. 서브쿼리를 이용해 주세요.");
-                  }
-
-                  const createTableMatch = sqlForAlasql.match(/CREATE\s+OR\s+REPLACE\s+TABLE\s+([a-zA-Z0-9_`]+)\s+AS/i);
-                  if (createTableMatch) {
-                      showSuccessMessageInsteadOfData = true;
-                      sqlForAlasql = sqlForAlasql.replace(/CREATE\s+OR\s+REPLACE\s+TABLE\s+[a-zA-Z0-9_`]+\s+AS/i, '');
-                  }
-
-                  sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
-
-                  const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
-                  let selectItems = [];
-                  if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
-                      selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
-                      
-                      sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
-                          const upToMatch = string.substring(0, offset);
-                          const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
-                          
-                          if (selectMatches.length > 0) {
-                              const lastSelect = selectMatches[selectMatches.length - 1][1];
-                              const selectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
-                              const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
-                              
-                              const cols = indices.map(idx => {
-                                  if (!isNaN(idx) && idx > 0 && idx <= selectItems.length) {
-                                      let item = selectItems[idx - 1];
-                                      if (!item) return String(idx); // 안전 장치 추가
-                                      let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
-                                      if (aliasMatch) return aliasMatch[1].trim();
-                                      return item.trim();
-                                  }
-                                  return String(idx);
-                              });
-                              return `GROUP BY ${cols.join(', ')}${rest}`;
-                          }
-                          return match;
-                      });
-                  }
-            
-                  Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
-                      alasql(`DROP TABLE IF EXISTS ${tbl}`);
-                      alasql(`CREATE TABLE ${tbl}`);
-                      if (!alasql.tables[tbl]) {
-                          alasql.tables[tbl] = { data: [] };
-                      }
-                      alasql.tables[tbl].data = JSON.parse(JSON.stringify(rows));
-                  });
-                  
-                  executedData = alasql(sqlForAlasql);
-                  
-                  if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
-                      if (noSpaceAnswer.includes('createorreplacetable') && !noSpaceInput.includes('createorreplacetable')) {
-                          isDataCorrect = false;
-                          executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
-                      } else {
-                          const isOrderRequired = currentEx.goal.includes('정렬') || noSpaceAnswer.includes('orderby') || noSpaceAnswer.includes('limit');
-                          const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
-
-                          const normalizeValuesOnly = (data, sortRows) => {
-                              const mappedData = data.map(row => {
-                                  const vals = Object.values(row).map(v => v !== null && v !== undefined ? String(v) : 'NULL');
-                                  return JSON.stringify(vals);
-                              });
-                              return sortRows ? mappedData.sort() : mappedData;
-                          };
-                          
-                          const userValMatrix = normalizeValuesOnly(executedData, !isOrderRequired);
-                          const expValMatrix = normalizeValuesOnly(currentEx.res, !isOrderRequired);
-                          
-                          if (JSON.stringify(userValMatrix) === JSON.stringify(expValMatrix)) {
-                              isDataCorrect = true;
-                          }
-
-                          if (!isDataCorrect) {
-                              const normalize = (data, sortRows) => {
-                                  const mappedData = data.map(row => {
-                                      const newRow = {};
-                                      Object.keys(row).forEach(key => {
-                                          const cleanKey = key.includes('.') ? key.split('.')[1] : key;
-                                          const lowerKey = cleanKey.toLowerCase();
-                                          
-                                          if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
-                                              return; 
-                                          }
-                                          newRow[lowerKey] = row[key];
-                                      });
-                                      
-                                      expectedKeys.forEach(ek => {
-                                          if (!(ek in newRow)) {
-                                              newRow[ek] = null;
-                                          }
-                                      });
-                                      
-                                      return JSON.stringify(Object.entries(newRow).sort());
-                                  });
-                                  return sortRows ? mappedData.sort() : mappedData;
-                              };
-                              
-                              const userResult = normalize(executedData, !isOrderRequired);
-                              const expectedResult = normalize(currentEx.res, !isOrderRequired);
-                              
-                              if (JSON.stringify(userResult) === JSON.stringify(expectedResult)) {
-                                  isDataCorrect = true;
-                              }
-                          }
-                      }
-                  }
-              } catch (err) {
-                  executionError = "실행 오류: " + err.message;
-                  
-                  if (noSpaceInput.includes('where') && noSpaceInput.match(/where.*,/i) && err.message.toLowerCase().includes('parse error')) {
-                      executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
-                  }
-                  if (noSpaceInput.includes('count(distinct(')) {
-                      executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
-                  }
-              }
-
-              let finalData = executedData;
-              if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
-                  finalData = []; // 강제로 빈 배열로 만들어 표를 무조건 표시함
-                  if (executionError) {
-                      executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
-                  }
-              }
-
-              // [엔진 버그 보완] 10단계 윈도우 함수 + 서브쿼리 버그 강제 복원 
-              if (isStringCorrect && currentEx.goal.includes('추출')) {
-                 if(finalData.length === 0 || (finalData.length > 0 && finalData[0].rn && Object.keys(finalData[0]).length === 1)) {
-                     executionError = "💡 [분석가 팁] 작성하신 쿼리는 실무에서 100% 정상 작동하는 완벽한 정답입니다! 결과 표에 0 Rows 가 뜨거나 rn만 나오는 것은 가상 엔진(Alasql)의 서브쿼리 버그 때문이며, 정답 처리와 함께 원본 결과표를 완벽히 복원해 드립니다.";
-                 }
-              }
-
-              if (currentEx.goal && currentEx.goal.includes('비정상 결제 탐지')) {
-                  if (noSpaceInput.includes('nameisnull') && !/[a-z0-9_`]+\.nameisnull/i.test(noSpaceInput)) {
-                      return {
-                          success: false,
-                          data: finalData,
-                          error: "💡 [분석가 팁] 소속 테이블 누락: 'name IS NULL'처럼 소속을 적지 않으면, 가상 엔진은 기준 테이블에서 name을 찾다 실패하여 전부 NULL로 취급, 모든 데이터를 통과시킵니다. 실무 JOIN에서는 반드시 'b.name IS NULL'처럼 테이블 별칭을 명시해야 합니다."
-                      };
-                  }
-              }
-
-              const rules = [
-                  { keyword: 'groupby', condition: noSpaceAnswer.includes('groupby'), error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." },
-                  { keyword: 'orderby', condition: currentEx.goal.includes('정렬') || noSpaceAnswer.includes('orderby'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
-                  { keyword: 'with', condition: /\bwith\b/.test(noSpaceAnswer), boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
-                  { keyword: '(select', condition: noSpaceAnswer.includes('(select'), alt: '(select', error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
-                  { keyword: 'row_number', condition: noSpaceAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
-                  { keyword: 'concat', condition: noSpaceAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
-                  { keyword: 'substr', condition: noSpaceAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
-                  { keyword: 'distinct', condition: noSpaceAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
-              ];
-
-              for (const rule of rules) {
-                  if (rule.condition) {
-                      let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(noSpaceInput) : noSpaceInput.includes(rule.keyword);
-                      if (rule.alt && !hasKeyword) hasKeyword = noSpaceInput.includes(rule.alt);
-                      if (!hasKeyword) {
-                          return { success: false, data: finalData, error: rule.error };
-                      }
-                  }
-              }
-
-              if (/\bas['"][^'"]+['"]/i.test(noSpaceInput)) {
-                  return {
-                      success: false,
-                      data: finalData,
-                      error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 따옴표는 문자열 데이터(값)를 표현할 때만 쓰며, 컬럼명/별칭에는 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
-                  };
-              }
-              
-              if (isDataCorrect || isStringCorrect) {
-                let displayData = isDataCorrect ? finalData : currentEx.res; 
-                if (showSuccessMessageInsteadOfData) {
-                    displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
+                            if (!isDataCorrect) {
+                                const normalize = (data, sortRows) => {
+                                    const mappedData = data.map(row => {
+                                        const newRow = {};
+                                        Object.keys(row).forEach(key => {
+                                            const cleanKey = key.includes('.') ? key.split('.')[1] : key;
+                                            const lowerKey = cleanKey.toLowerCase();
+                                            
+                                            if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
+                                                return; 
+                                            }
+                                            newRow[lowerKey] = row[key];
+                                        });
+                                        
+                                        expectedKeys.forEach(ek => {
+                                            if (!(ek in newRow)) {
+                                                newRow[ek] = null;
+                                            }
+                                        });
+                                        
+                                        return JSON.stringify(Object.entries(newRow).sort());
+                                    });
+                                    return sortRows ? mappedData.sort() : mappedData;
+                                };
+                                
+                                const userResult = normalize(executedData, !isOrderRequired);
+                                const expectedResult = normalize(currentEx.res, !isOrderRequired);
+                                
+                                if (JSON.stringify(userResult) === JSON.stringify(expectedResult)) {
+                                    isDataCorrect = true;
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    executionError = "실행 오류: " + err.message;
+                    if (noSpaceInput.includes('where') && noSpaceInput.match(/where.*,/i) && err.message.toLowerCase().includes('parse error')) {
+                        executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
+                    }
+                    if (noSpaceInput.includes('count(distinct(')) {
+                        executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
+                    }
                 }
-                return { success: true, data: displayData, error: executionError };
-              } else {
+
+                let finalData = executedData;
+                if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
+                    finalData = [];
+                    if (executionError) {
+                        executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
+                    }
+                }
+
+                // [엔진 버그 보완] 서브쿼리 내 ROW_NUMBER 증발 복구 로직
+                if (isStringCorrect && goalText.includes('추출')) {
+                   if(finalData.length === 0 || (finalData.length > 0 && finalData[0].rn && Object.keys(finalData[0]).length === 1)) {
+                       executionError = "💡 [분석가 팁] 작성하신 쿼리는 실무에서 100% 정상 작동하는 완벽한 정답입니다! 결과 표에 0 Rows 가 뜨거나 rn만 나오는 것은 가상 엔진(Alasql)의 서브쿼리 버그 때문이며, 정답 처리와 함께 원본 결과표를 완벽히 복원해 드립니다.";
+                   }
+                }
+
+                if (goalText.includes('비정상 결제 탐지')) {
+                    if (noSpaceInput.includes('nameisnull') && !/[a-z0-9_`]+\.nameisnull/i.test(noSpaceInput)) {
+                        return {
+                            success: false,
+                            data: finalData,
+                            error: "💡 [분석가 팁] 소속 테이블 누락: 'name IS NULL'처럼 소속을 적지 않으면, 가상 엔진은 기준 테이블에서 name을 찾다 실패하여 전부 NULL로 취급, 모든 데이터를 통과시킵니다. 실무 JOIN에서는 반드시 'b.name IS NULL'처럼 테이블 별칭을 명시해야 합니다."
+                        };
+                    }
+                }
+
+                const rules = [
+                    { keyword: 'groupby', condition: noSpaceAnswer.includes('groupby'), error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." },
+                    { keyword: 'orderby', condition: goalText.includes('정렬') || noSpaceAnswer.includes('orderby'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
+                    { keyword: 'with', condition: /\bwith\b/.test(noSpaceAnswer), boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
+                    { keyword: '(select', condition: noSpaceAnswer.includes('(select'), alt: '(select', error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
+                    { keyword: 'row_number', condition: noSpaceAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
+                    { keyword: 'concat', condition: noSpaceAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
+                    { keyword: 'substr', condition: noSpaceAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
+                    { keyword: 'distinct', condition: noSpaceAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
+                ];
+
+                for (const rule of rules) {
+                    if (rule.condition) {
+                        let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(noSpaceInput) : noSpaceInput.includes(rule.keyword);
+                        if (rule.alt && !hasKeyword) hasKeyword = noSpaceInput.includes(rule.alt);
+                        if (!hasKeyword) {
+                            return { success: false, data: finalData, error: rule.error };
+                        }
+                    }
+                }
+
+                if (/\bas['"][^'"]+['"]/i.test(noSpaceInput)) {
+                    return {
+                        success: false,
+                        data: finalData,
+                        error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 따옴표는 문자열 데이터(값)를 표현할 때만 쓰며, 컬럼명/별칭에는 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
+                    };
+                }
+                
+                if (isDataCorrect || isStringCorrect) {
+                  let displayData = isDataCorrect ? finalData : currentEx.res; 
+                  if (showSuccessMessageInsteadOfData) {
+                      displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
+                  }
+                  return { success: true, data: displayData, error: executionError };
+                } else {
+                  return { 
+                      success: false, 
+                      data: finalData, 
+                      error: executionError || "오답입니다. 추출해야 할 컬럼명과 필터, 그리고 문제의 의도(정렬, 생성 등)를 확인하세요." 
+                  };
+                }
+
+            } catch (criticalErr) {
                 return { 
                     success: false, 
-                    data: finalData, 
-                    error: executionError || "오답입니다. 추출해야 할 컬럼명과 필터, 그리고 문제의 의도(정렬, 생성 등)를 확인하세요." 
+                    data: [], 
+                    error: `치명적 시스템 오류가 발생했습니다: ${criticalErr.message}\n(작성하신 쿼리가 너무 복잡하거나 엔진이 지원하지 않는 문법일 수 있습니다.)` 
                 };
-              }
-
-          } catch (criticalErr) {
-              return { 
-                  success: false, 
-                  data: [], 
-                  error: `치명적 시스템 오류가 발생했습니다: ${criticalErr.message}\n(작성하신 쿼리가 너무 복잡하거나 엔진이 지원하지 않는 문법일 수 있습니다.)` 
-              };
-          }
+            }
         };
 
         // --- 실무 적용 과제 (Homework) 데이터 세트 ---
@@ -706,15 +707,15 @@
                 id: 1, title: "실무 1. 인기 요금제 현황 보고",
                 scenario: "[상품팀] 현재 활성화(Active)된 요금제를 이용 중인 고객들의 이름과 해당 요금제 명칭을 매칭하여\n인기 요금제 현황을 보고 싶어 합니다.",
                 target: "name, plan_name",
-                answer: "SELECT \n  c.name, \n  p.plan_name \nFROM Customers c \nJOIN Subscriptions s \n  ON c.cust_id = s.cust_id \nJOIN Plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active'\n;",
+                answer: "SELECT \n  c.name, \n  p.plan_name \nFROM customers c \nJOIN subscriptions s \n  ON c.cust_id = s.cust_id \nJOIN plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active'\n;",
                 res: [{name: '김철수', plan_name: '5G 프리미어 에센셜'}, {name: '최지우', plan_name: '5G 프리미어 에센셜'}],
-                hint: "Customers(c), Subscriptions(s), Plans(p) 3개 테이블을 JOIN하고 WHERE status = 'Active' 조건으로 필터링하세요."
+                hint: "customers(c), subscriptions(s), plans(p) 3개 테이블을 JOIN하고 WHERE status = 'Active' 조건으로 필터링하세요."
             },
             {
                 id: 2, title: "실무 2. 고위험 이탈 고객 분석",
                 scenario: "[마케팅팀] 가입일(join_date)이 2026년 2월 이후인 고객들 중, 이미 해지(Churned)한 고객들의 정보를 추출해주세요.\n나이(age)에 따라 '30대 이상', '30대 미만'으로 등급(age_group)을 나누어 주세요.",
                 target: "name, city, age_group",
-                answer: "SELECT \n  c.name, \n  c.city, \n  CASE \n    WHEN c.age >= 30 THEN '30대 이상' \n    ELSE '30대 미만' \n  END AS age_group \nFROM Customers c \nJOIN Subscriptions s \n  ON c.cust_id = s.cust_id \nWHERE c.join_date >= 20260201 \n  AND s.status = 'Churned'\n;",
+                answer: "SELECT \n  c.name, \n  c.city, \n  CASE \n    WHEN c.age >= 30 THEN '30대 이상' \n    ELSE '30대 미만' \n  END AS age_group \nFROM customers c \nJOIN subscriptions s \n  ON c.cust_id = s.cust_id \nWHERE c.join_date >= 20260201 \n  AND s.status = 'Churned'\n;",
                 res: [{name: '이영희', city: '경기', age_group: '30대 미만'}],
                 hint: "join_date 조건과 status 조건을 AND로 묶고, CASE WHEN을 사용해 age_group을 생성하세요."
             },
@@ -722,26 +723,26 @@
                 id: 3, title: "실무 3. 활성 고객 월 매출(MRR) 집계",
                 scenario: "[재무팀] 현재 활성화(Active) 상태인 구독 건들을 바탕으로,\n각 요금제별(plan_name) 총 예상 월 매출(total_revenue)을 집계해 주세요.",
                 target: "plan_name, total_revenue",
-                answer: "SELECT \n  p.plan_name, \n  SUM(p.price) AS total_revenue \nFROM Subscriptions s \nJOIN Plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active' \nGROUP BY p.plan_name\n;",
+                answer: "SELECT \n  p.plan_name, \n  SUM(p.price) AS total_revenue \nFROM subscriptions s \nJOIN plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active' \nGROUP BY p.plan_name\n;",
                 res: [{plan_name: '5G 프리미어 에센셜', total_revenue: 170000}],
-                hint: "Subscriptions와 Plans를 JOIN하고 Active만 필터링한 뒤, plan_name으로 GROUP BY하여 price의 SUM을 구하세요."
+                hint: "subscriptions와 plans를 JOIN하고 Active만 필터링한 뒤, plan_name으로 GROUP BY하여 price의 SUM을 구하세요."
             }
         ];
         
         const PRAC_TABLE_DATA = {
-          Customers: [
+          customers: [
             { cust_id: 'C_001', name: '김철수', age: 32, city: '서울', join_date: 20260301 },
             { cust_id: 'C_002', name: '이영희', age: 28, city: '경기', join_date: 20260305 },
             { cust_id: 'C_003', name: '박민수', age: 54, city: '서울', join_date: 20260220 },
             { cust_id: 'C_004', name: '최지우', age: 35, city: '서울', join_date: 20260215 },
             { cust_id: 'C_005', name: '정다은', age: 31, city: '인천', join_date: 20260310 }
           ],
-          Subscriptions: [
+          subscriptions: [
             { sub_id: 'S_101', cust_id: 'C_001', plan_id: 'P_01', status: 'Active' },
             { sub_id: 'S_102', cust_id: 'C_002', plan_id: 'P_02', status: 'Churned' },
             { sub_id: 'S_103', cust_id: 'C_004', plan_id: 'P_01', status: 'Active' }
           ],
-          Plans: [
+          plans: [
             { plan_id: 'P_01', plan_name: '5G 프리미어 에센셜', price: 85000 },
             { plan_id: 'P_02', plan_name: '5G 스탠다드', price: 75000 },
             { plan_id: 'P_03', plan_name: '(LTE) 추가 요금 데이터 69', price: 69000 }
