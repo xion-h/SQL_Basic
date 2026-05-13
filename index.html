@@ -481,9 +481,9 @@
               let noSpaceInput = input.trim().replace(/\s+/g, ' ').replace(/\s*\(\s*/g, '(').replace(/\s*\)\s*/g, ')').replace(/\s*=\s*/g, '=').replace(/\s*>\s*/g, '>').replace(/\s*<\s*/g, '<').replace(/\s*;\s*/g, ';').toLowerCase();
               let noSpaceAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').replace(/\s*\(\s*/g, '(').replace(/\s*\)\s*/g, ')').replace(/\s*=\s*/g, '=').replace(/\s*>\s*/g, '>').replace(/\s*<\s*/g, '<').replace(/\s*;\s*/g, ';').toLowerCase();
               
-              // WHERE 1=1 AND 우회 처리
-              let checkInput = noSpaceInput.replace(/where1=1and/g, 'where');
-              let checkAnswer = noSpaceAnswer.replace(/where1=1and/g, 'where');
+              // [완벽 해결] 띄어쓰기 0%의 순수 문자열을 추출하여 1=1 AND 우회 처리 완벽 호환
+              let strippedInput = input.replace(/\s+/g, '').toLowerCase().replace(/where1=1and/g, 'where');
+              let strippedAnswer = currentEx.answer.replace(/\s+/g, '').toLowerCase().replace(/where1=1and/g, 'where');
 
               let executedData = null;
               let executionError = null;
@@ -491,7 +491,7 @@
               let showSuccessMessageInsteadOfData = false;
               let isWindowFunction = false;
               
-              const isStringCorrect = checkInput === checkAnswer || checkInput === checkAnswer.replace(/;$/, '') || checkInput + ';' === checkAnswer;
+              const isStringCorrect = strippedInput === strippedAnswer || strippedInput === strippedAnswer.replace(/;$/, '') || strippedInput + ';' === strippedAnswer;
               
               try {
                   const alasql = window.alasql;
@@ -625,16 +625,16 @@
 
               let finalData = executedData;
               if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
-                  finalData = []; 
+                  finalData = []; // 강제로 빈 배열로 만들어 표를 무조건 표시함
                   if (executionError) {
                       executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
                   }
               }
 
               // [엔진 버그 보완] 10단계 윈도우 함수 + 서브쿼리 버그 강제 복원 
-              if (isStringCorrect && currentEx.goal.includes('추출') && finalData.length > 0 && finalData[0].rn) {
-                 if(Object.keys(finalData[0]).length === 1) {
-                     executionError = "💡 [분석가 팁] 작성하신 쿼리는 실무에서 100% 정상 작동하는 완벽한 정답입니다! 결과 표에 전체 컬럼이 안 나오는 것은 가상 엔진(Alasql)의 서브쿼리 내 SELECT * 증발 버그 때문이며, 정답 처리와 함께 원본 결과표를 복원해 드립니다.";
+              if (isStringCorrect && currentEx.goal.includes('추출')) {
+                 if(finalData.length === 0 || (finalData.length > 0 && finalData[0].rn && Object.keys(finalData[0]).length === 1)) {
+                     executionError = "💡 [분석가 팁] 작성하신 쿼리는 실무에서 100% 정상 작동하는 완벽한 정답입니다! 결과 표에 0 Rows 가 뜨거나 rn만 나오는 것은 가상 엔진(Alasql)의 서브쿼리 버그 때문이며, 정답 처리와 함께 원본 결과표를 완벽히 복원해 드립니다.";
                  }
               }
 
