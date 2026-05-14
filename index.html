@@ -33,6 +33,10 @@
         .main-wrapper { display: flex; flex: 1; overflow: hidden; }
         .sidebar { width: 18rem; flex-shrink: 0; background: white; border-right: 1px solid #e2e8f0; overflow-y: auto; padding: 1.5rem; }
         .content { flex: 1; overflow-y: auto; padding: 2rem; background: #f8fafc; }
+        
+        /* 잠금장치 스타일 */
+        .locked-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 20; border-radius: 2.5rem; }
+        .locked-overlay span { background: white; padding: 12px 24px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body class="text-slate-900">
@@ -93,15 +97,10 @@
             title: "조건으로 거르기",
             grammar: "WHERE",
             subtitle: "원하는 데이터만 골라내는 필터링",
-            theory: "WHERE 절은 특정 조건에 맞는 행만 골라냅니다.\n\nAND를 사용해 여러 조건을 동시에 적용할 수 있습니다.\n\n[실무 팁: WHERE 1=1 AND]\n실무에서는 조건을 껐다 켜기 편하게 만들려고 `WHERE 1=1`을 먼저 적고, 그 아래에 `AND 조건`을 나열하는 방식을 자주 씁니다.\n\n이때 조건과 조건 사이는 콤마(,)가 아니라 반드시 `AND`나 `OR`로 연결해야 합니다.\n\n[사용 방법]\nSELECT \n  * \nFROM 테이블 \nWHERE 1=1 \n  AND 컬럼명 = '값' \n  AND 숫자컬럼 > 100\n;\n\n[다양한 필터 연산자]\n※ LIKE, IN, BETWEEN 등 다양한 필터 연산자를 활용할 수 있습니다.\n\n- LIKE: 특정 문자 패턴을 찾습니다. (예: WHERE city LIKE '서%')\n\n- IN: 여러 값 중 하나라도 일치하는지 찾습니다. (예: WHERE city IN ('서울', '경기'))\n\n- BETWEEN: A와 B 사이의 범위를 찾습니다. (예: WHERE age BETWEEN 20 AND 29)",
-            checkpoint: "1. 데이터에 빈 값(NULL)이 포함된 경우 일반적인 비교(=)로는 잡히지 않습니다.\n반드시 'IS NULL' 또는 'IS NOT NULL'을 사용하세요.\n\n2. [주의] 숫자에 따옴표를 씌워도('20') DB가 알아서 숫자로 바꿔 계산해주지만(암시적 형변환), 데이터가 많아지면 속도가 크게 느려집니다. 숫자는 따옴표 없이 적는 습관을 들이세요.",
+            theory: "WHERE 절은 특정 조건에 맞는 행만 골라냅니다.\n\nAND를 사용해 여러 조건을 동시에 적용할 수 있습니다.\n\n[실무 팁: WHERE 1=1 AND]\n실무에서는 조건을 껐다 켜기 편하게 만들려고 `WHERE 1=1`을 먼저 적고, 그 아래에 `AND 조건`을 나열하는 방식을 자주 씁니다.\n\n이때 조건과 조건 사이는 콤마(,)가 아니라 반드시 `AND`나 `OR`로 연결해야 합니다.\n\n[사용 방법]\nSELECT \n  * \nFROM 테이블 \nWHERE 1=1 \n  AND 컬럼명 = '값' \n  AND 숫자컬럼 > 100\n;\n\n[다양한 필터 연산자]\n※ LIKE, IN, BETWEEN 등 다양한 필터 연산자를 활용할 수 있습니다.\n\n- LIKE: '서%' (서로 시작하는 문자열)\n\n- IN: ('서울', '경기') (목록 중 하나라도 포함)\n\n- BETWEEN A AND B: A와 B 사이 범위",
+            checkpoint: "데이터에 빈 값(NULL)이 포함된 경우 일반적인 비교(=)로는 잡히지 않습니다.\n반드시 'IS NULL' 또는 'IS NOT NULL'을 사용하세요.\n\n※ 실무 팁: 숫자 컬럼을 비교할 때 작은따옴표를 씌우면(예: age >= '20') DB가 문자를 숫자로 바꾸는 암시적 형변환을 수행하므로 성능이 떨어집니다. 숫자는 따옴표 없이 적어주세요.",
             targetTable: "users",
-            exampleData: { "users": [
-              { cust_id: 1, city: '서울', age: 25 },
-              { cust_id: 2, city: '부산', age: 32 },
-              { cust_id: 3, city: '인천', age: 19 },
-              { cust_id: 4, city: '서울', age: 15 }
-            ] },
+            exampleData: { "users": [{ cust_id: 1, city: '서울', age: 25 }, { cust_id: 2, city: '부산', age: 30 }, { cust_id: 3, city: '인천', age: 22 }, { cust_id: 4, city: '서울', age: 15 }] },
             exerciseData: { "users": [
               { cust_id: 1, city: '서울', age: 25 }, 
               { cust_id: 2, city: '부산', age: 32 }, 
@@ -343,7 +342,9 @@
             exercises: [
               { id: 1, goal: "[상황: 고연봉자 탐색]\nHR팀에서 전사 평균 급여(salary)보다 더 많은 급여를 받는 직원들의 이름(name)과 급여를 요청했습니다.\nWHERE 절에 서브쿼리를 사용하여 추출하세요.", target: "name, salary", answer: "SELECT name, salary FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);", res: [{name:'이영희', salary:400},{name:'박민수', salary:500},{name:'최지우', salary:600}], hint: "WHERE salary > (SELECT AVG(salary) FROM employees)" },
               { id: 2, goal: "[상황: 우수 부서 전체 포상]\n'급여가 400 이상인 고성과자'를 1명이라도 배출한 우수 부서를 찾고,\n해당 부서 소속이라면 본인 급여와 무관하게 모든 팀원의 정보(*)를 추출하세요.\n(서브쿼리로 우수 부서를 찾고, IN 연산자로 필터링합니다)", target: "*", answer: "SELECT * FROM employees WHERE dept IN (SELECT dept FROM employees WHERE salary >= 400);", res: [{emp_id:1, name:'김철수', dept:'영업', salary:200},{emp_id:2, name:'이영희', dept:'영업', salary:400},{emp_id:3, name:'박민수', dept:'IT', salary:500},{emp_id:4, name:'최지우', dept:'IT', salary:600}], hint: "WHERE dept IN (SELECT dept FROM employees WHERE salary >= 400)" },
-              { id: 3, goal: "[상황: 부서 요약 가공]\nFROM 절 서브쿼리(인라인 뷰)를 사용하여 먼저 부서(dept)별 평균 급여를 구한(AS avg_sal) 임시 결과를 만드세요.\n그 결과에서 평균 급여가 400 이상인 부서만 메인 쿼리에서 필터링하여 조회하세요.", target: "dept, avg_sal", answer: "SELECT * FROM (SELECT dept, AVG(salary) AS avg_sal FROM employees GROUP BY dept) WHERE avg_sal >= 400;", res: [{dept:'IT', avg_sal:550}], hint: "SELECT * FROM (SELECT dept, AVG(salary) AS avg_sal ...) WHERE avg_sal >= 400;" }
+              { id: 3, goal: "[상황: 부서 요약 가공]\nFROM 절 서브쿼리(인라인 뷰)를 사용하여 먼저 부서(dept)별 평균 급여를 구한(AS avg_sal) 임시 결과를 만드세요.\n그 결과에서 평균 급여가 400 이상인 부서만 메인 쿼리에서 필터링하여 조회하세요.", target: "dept, avg_sal", answer: "SELECT * FROM (SELECT dept, AVG(salary) AS avg_sal FROM employees GROUP BY dept) WHERE avg_sal >= 400;", res: [{dept:'IT', avg_sal:550}], hint: "SELECT * FROM (SELECT dept, AVG(salary) AS avg_sal ...) WHERE avg_sal >= 400;" },
+              { id: 4, goal: "[상황: 부서별 규모 파악]\nFROM 절 서브쿼리로 부서(dept)별 총 인원(emp_cnt)과 총 급여(total_sal)를 먼저 계산하세요.\n이후 바깥쪽 쿼리에서 인원이 2명 이상(>= 2)인 부서만 걸러서 조회하세요.", target: "dept, emp_cnt, total_sal", answer: "SELECT * FROM (SELECT dept, COUNT(*) AS emp_cnt, SUM(salary) AS total_sal FROM employees GROUP BY dept) WHERE emp_cnt >= 2;", res: [{dept:'영업', emp_cnt:2, total_sal:600},{dept:'IT', emp_cnt:2, total_sal:1100}], hint: "SELECT * FROM (SELECT ... COUNT(*) AS emp_cnt ...) WHERE emp_cnt >= 2;" },
+              { id: 5, goal: "[종합 예제]\n전사 평균 급여보다 많이 받는 고연봉자 직원들 중에서, 가장 급여가 '낮은' 1명의 이름(name)을 찾으세요.\n(WHERE절 서브쿼리 + ORDER BY + LIMIT 활용)", target: "name", answer: "SELECT name FROM employees WHERE salary > (SELECT AVG(salary) FROM employees) ORDER BY salary ASC LIMIT 1;", res: [{name:'이영희'}], hint: "서브쿼리로 평균보다 높은 조건을 주고, ORDER BY salary ASC LIMIT 1 을 붙이세요." }
             ]
           },
           {
@@ -368,7 +369,7 @@
             mockResult: [{ dt: '2026-05-01', amt: 300 }],
             exercises: [
               { id: 1, goal: "[상황: 기초 테이블 세팅]\n데이터 분석가로서 복잡한 쿼리를 짜기 전, daily_sales 전체를 담은 'base'라는 임시 테이블을 WITH문으로 선언하고\n전체(*)를 조회해 보세요.", target: "*", answer: "WITH base AS (SELECT * FROM daily_sales) SELECT * FROM base;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-01', amt:200, item:'B'},{dt:'2026-05-02', amt:100, item:'B'},{dt:'2026-05-02', amt:400, item:'A'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH base AS (...) SELECT * FROM base" },
-              { id: 2, goal: "[상황: 가공 데이터 블록 생성]\n기존 매출액(amt)에 2를 곱해 예상 매출(d_amt)을 만든 'double' 임시 테이블을 선언하고\n조회하세요.", target: "d_amt", answer: "WITH double AS (SELECT amt * 2 AS d_amt FROM daily_sales) SELECT * FROM double;", res: [{d_amt:600},{d_amt:400},{d_amt:200},{d_amt:800},{d_amt:1000}], hint: "SELECT amt * 2 AS d_amt" },
+              { id: 2, goal: "[상황: 조건부 임시 테이블]\n금액(amt)이 150 이상인 우수 실적만 모아둔 'high'라는 임시 테이블을 만들고\n전체(*)를 조회하세요.", target: "*", answer: "WITH high AS (SELECT * FROM daily_sales WHERE amt >= 150) SELECT * FROM high;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-01', amt:200, item:'B'},{dt:'2026-05-02', amt:400, item:'A'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH 문 안에 WHERE 절을 넣으세요." },
               { id: 3, goal: "[상황: 일별 집계 테이블]\n마케팅팀의 요청으로 일자별(dt) 매출 합계를 계산(별칭: s)해둔 'tmp' 임시 테이블을 구성하고\n전체(*)를 조회하세요.", target: "dt, s", answer: "WITH tmp AS (SELECT dt, SUM(amt) AS s FROM daily_sales GROUP BY dt) SELECT * FROM tmp;", res: [{dt:'2026-05-01', s:500},{dt:'2026-05-02', s:500},{dt:'2026-05-03', s:500}], hint: "GROUP BY를 포함합니다." }
             ]
           },
@@ -390,11 +391,11 @@
             goal: "마지막 방문 기록 1건 추출",
             logicDetail: "유저별로 그룹을 짓고 시간이 늦은 순서로 번호를 매긴 서브쿼리를 만들고, 바깥에서 1번인 행만 필터링합니다.",
             example: "SELECT * \nFROM (\n  SELECT \n    *, \n    ROW_NUMBER() OVER(\n      PARTITION BY cust_id \n      ORDER BY time DESC\n    ) AS rn\n  FROM login_log\n)\nWHERE rn = 1\n;",
-            mockResult: [{ cust_id: 'A', time: '12:00' }],
+            mockResult: [{ cust_id: 'A', time: '12:00', device: 'Mobile', rn: 1 }],
             exercises: [
-              { id: 1, goal: "[상황: 유저별 번호 부여]\n유저(cust_id)별 접속 패턴을 보기 위해, 유저 단위로 파티션(그룹)을 나누어\n번호(rn)를 매겨보세요.\n\n(※ 가상 엔진 특성상 새롭게 연산된 rn 컬럼이 첫 번째 열로 출력될 수 있으나 정상입니다.)", target: "전체 컬럼(*), rn", answer: "SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id) AS rn FROM login_log;", res: [{rn:1, cust_id:'A', time:'10:00', device:'PC'},{rn:2, cust_id:'A', time:'12:00', device:'Mobile'},{rn:1, cust_id:'B', time:'11:00', device:'PC'},{rn:2, cust_id:'B', time:'13:00', device:'Mobile'}], hint: "PARTITION BY cust_id 를 사용하세요." },
-              { id: 2, goal: "[상황: 최신 접속 로그 추출]\n보안팀에서 유저별로 가장 마지막(최근)에 접속한 단 1건의 로그(*)만 필요하다고 합니다.\n서브쿼리를 사용해 추출하세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time DESC) AS rn FROM login_log) WHERE rn = 1;", res: [{rn:1, cust_id:'A', time:'12:00', device:'Mobile'},{rn:1, cust_id:'B', time:'13:00', device:'Mobile'}], hint: "FROM 절 서브쿼리로 먼저 rn을 만든 후 WHERE rn = 1 조건을 줍니다." },
-              { id: 3, goal: "[상황: 최초 접속 로그 추출]\n마케팅팀에서 유저별 가장 첫(오래된) 접속 로그(*)를 분석하여 유입 채널을 보려 합니다.\n순번을 오름차순(ASC)으로 매겨 1번을 찾으세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time ASC) AS rn FROM login_log) WHERE rn = 1;", res: [{rn:1, cust_id:'A', time:'10:00', device:'PC'},{rn:1, cust_id:'B', time:'11:00', device:'PC'}], hint: "ORDER BY time ASC 를 사용하세요." }
+              { id: 1, goal: "[상황: 단순 순번 부여]\n전체 접속 로그(login_log)를 조회하면서, 별도의 기준 없이 단순히 1번부터 번호(rn)를 매겨 보세요.\n\n(※ 가상 엔진 특성상 새롭게 연산된 rn 컬럼이 결과 표의 첫 번째 열로 출력될 수 있으나 정상입니다.)", target: "전체 컬럼(*), rn", answer: "SELECT *, ROW_NUMBER() OVER() AS rn FROM login_log;", res: [{cust_id:'A', time:'10:00', device:'PC', rn:1},{cust_id:'A', time:'12:00', device:'Mobile', rn:2},{cust_id:'B', time:'11:00', device:'PC', rn:3},{cust_id:'B', time:'13:00', device:'Mobile', rn:4}], hint: "ROW_NUMBER() OVER() AS rn" },
+              { id: 2, goal: "[상황: 유저별 번호 부여]\n유저(cust_id)별 접속 패턴을 보기 위해, 유저 단위로 파티션(그룹)을 나누어\n번호(user_rn)를 매겨보세요.", target: "user_rn 포함", answer: "SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id) AS user_rn FROM login_log;", res: [{cust_id:'A', time:'10:00', device:'PC', user_rn:1},{cust_id:'A', time:'12:00', device:'Mobile', user_rn:2},{cust_id:'B', time:'11:00', device:'PC', user_rn:1},{cust_id:'B', time:'13:00', device:'Mobile', user_rn:2}], hint: "PARTITION BY cust_id 를 사용하세요." },
+              { id: 3, goal: "[상황: 최신 접속 로그 추출]\n보안팀에서 유저별로 가장 마지막(최근)에 접속한 단 1건의 로그(*)만 필요하다고 합니다.\n서브쿼리를 사용해 추출하세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time DESC) AS rn FROM login_log) WHERE rn = 1;", res: [{cust_id:'A', time:'12:00', device:'Mobile', rn: 1},{cust_id:'B', time:'13:00', device:'Mobile', rn: 1}], hint: "FROM 절 서브쿼리로 먼저 rn을 만든 후 WHERE rn = 1 조건을 줍니다." }
             ]
           },
           {
@@ -408,18 +409,14 @@
             exampleData: { 
               "raw_data": [
                 { cust_id: 'A', amt: 5000 },
-                { cust_id: 'B', amt: 7000 },
-                { cust_id: 'A', amt: 3000 }
+                { cust_id: 'B', amt: 7000 }
               ] 
             },
             exerciseData: { 
               "raw_data": [
                 { cust_id: 'A', amt: 5000 },
-                { cust_id: 'B', amt: 7000 },
-                { cust_id: 'A', amt: 3000 },
-                { cust_id: 'C', amt: 2000 },
-                { cust_id: 'B', amt: 6000 },
-                { cust_id: 'A', amt: 1000 }
+                { cust_id: 'A', amt: 4000 },
+                { cust_id: 'B', amt: 7000 }
               ] 
             },
             goal: "raw_data를 모두 담은 'my_summary'라는 테이블을 새로 생성하기",
@@ -427,9 +424,9 @@
             example: "CREATE OR REPLACE TABLE my_summary AS \nSELECT \n  * \nFROM raw_data\n;",
             mockResult: [{ status: '성공', message: '테이블 my_summary 생성 완료 (출력 데이터 없음)' }],
             exercises: [
-              { id: 1, goal: "[상황: 원본 백업]\n대규모 업데이트 전, raw_data 테이블의 전체 내용(*)을 담아\n'backup_data'라는 이름의 물리적 테이블로 안전하게 복사해 두세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;", res: [{cust_id:'A', amt:5000},{cust_id:'B', amt:7000},{cust_id:'A', amt:3000},{cust_id:'C', amt:2000},{cust_id:'B', amt:6000},{cust_id:'A', amt:1000}], hint: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;" },
-              { id: 2, goal: "[상황: VIP 데이터 마트 생성]\nVIP 관리를 위해 amt가 6000 이상인 고액 결제 데이터만 따로 모아\n'high_value'라는 테이블로 영구 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE high_value AS SELECT * FROM raw_data WHERE amt >= 6000;", res: [{cust_id:'B', amt:7000},{cust_id:'B', amt:6000}], hint: "SELECT 문 뒤에 WHERE amt >= 6000 을 추가하세요." },
-              { id: 3, goal: "[상황: 유저별 집계 마트]\n마케팅 캠페인에 즉시 활용할 수 있도록, 고객(cust_id)별 매출 합계를 계산한 결과를\n'user_summary'라는 테이블로 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE user_summary AS SELECT cust_id, SUM(amt) FROM raw_data GROUP BY cust_id;", res: [{cust_id:'A', 'sum(amt)':9000},{cust_id:'B', 'sum(amt)':13000},{cust_id:'C', 'sum(amt)':2000}], hint: "SELECT cust_id, SUM(amt) FROM raw_data GROUP BY cust_id 를 저장합니다." }
+              { id: 1, goal: "[상황: 원본 백업]\n대규모 업데이트 전, raw_data 테이블의 전체 내용(*)을 담아\n'backup_data'라는 이름의 물리적 테이블로 안전하게 복사해 두세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;", res: [{cust_id:'A', amt:5000},{cust_id:'A', amt:4000},{cust_id:'B', amt:7000}], hint: "CREATE OR REPLACE TABLE backup_data AS SELECT * FROM raw_data;" },
+              { id: 2, goal: "[상황: VIP 데이터 마트 생성]\nVIP 관리를 위해 amt가 6000 이상인 고액 결제 데이터만 따로 모아\n'high_value'라는 테이블로 영구 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE high_value AS SELECT * FROM raw_data WHERE amt >= 6000;", res: [{cust_id:'B', amt:7000}], hint: "SELECT 문 뒤에 WHERE amt >= 6000 을 추가하세요." },
+              { id: 3, goal: "[상황: 유저별 집계 마트]\n마케팅 캠페인에 즉시 활용할 수 있도록, 고객(cust_id)별 매출 합계를 계산한 결과를\n'user_summary'라는 테이블로 저장하세요.", target: "테이블 생성", answer: "CREATE OR REPLACE TABLE user_summary AS SELECT cust_id, SUM(amt) FROM raw_data GROUP BY cust_id;", res: [{cust_id:'A', 'sum(amt)':9000},{cust_id:'B', 'sum(amt)':7000}], hint: "SELECT cust_id, SUM(amt) FROM raw_data GROUP BY cust_id 를 저장합니다." }
             ]
           }
         ];
@@ -441,24 +438,17 @@
             if (part.startsWith('[') && part.endsWith(']')) {
               const title = part.slice(1, -1);
               return (
-                <div key={index} className="inline-flex items-center w-fit bg-blue-50 text-blue-700 px-5 py-2 rounded-full text-[14px] font-black mt-10 mb-3 border border-blue-200 shadow-sm">
+                <span key={index} className="block w-fit bg-blue-50 text-blue-700 px-5 py-2 rounded-full text-sm font-black mt-8 mb-3 border border-blue-200 shadow-sm tracking-wide whitespace-normal">
                   {title}
-                </div>
+                </span>
               );
             }
-            
             let textContent = part;
-            // 뱃지 다음의 텍스트는 선행 줄바꿈 제거 (뱃지 margin으로 여백 조절)
             if (index > 0 && parts[index - 1].startsWith('[')) {
               textContent = textContent.replace(/^\n+/, '');
             }
-            // 뱃지 이전의 텍스트는 후행 줄바꿈 제거 (뱃지 margin으로 여백 조절)
-            if (index < parts.length - 1 && parts[index + 1].startsWith('[')) {
-              textContent = textContent.replace(/\n+$/, '');
-            }
-            
             // 텍스트 내에 포함된 HTML 태그(table 등)를 안전하게 렌더링
-            return <div key={index} className="whitespace-pre-wrap text-slate-700 leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: textContent }} />;
+            return <span key={index} dangerouslySetInnerHTML={{ __html: textContent }} />;
           });
         };
 
@@ -485,13 +475,18 @@
               if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
               if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
 
-              const normalizedInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
-              const normalizedAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
+              // [강력한 공백 무시 채점 로직]
+              const cleanForComparison = (str) => {
+                  return str.toLowerCase()
+                      .replace(/\s+/g, '') // 모든 공백 제거
+                      .replace(/`/g, '') // 백틱 무시
+                      .replace(/1=1and/g, '') // WHERE 1=1 트릭 허용
+                      .replace(/1=1/g, '')
+                      .replace(/;/g, '');
+              };
 
-              // [초강력 공백 무시 채점기] 모든 형태의 공백을 완벽하게 압축하여 실제 논리만 비교
-              const noSpaceInput = normalizedInput.replace(/\s+/g, '');
-              const noSpaceAnswer = normalizedAnswer.replace(/\s+/g, '');
-              const goalText = currentEx.goal || currentEx.scenario || '';
+              const normalizedInput = cleanForComparison(input);
+              const normalizedAnswer = cleanForComparison(currentEx.answer);
 
               let executedData = null;
               let executionError = null;
@@ -500,7 +495,7 @@
               let isWindowFunction = false;
               
               // 텍스트 완벽 일치 판별 (문자열 일치 시 버그와 무관하게 무조건 통과)
-              const isStringCorrect = noSpaceInput === noSpaceAnswer || noSpaceInput === noSpaceAnswer.replace(/;$/, '').trim() || noSpaceInput + ';' === noSpaceAnswer;
+              const isStringCorrect = normalizedInput === normalizedAnswer;
               
               try {
                   const alasql = window.alasql;
@@ -509,18 +504,6 @@
                   let sqlForAlasql = input.trim()
                       .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
                       .replace(/INT64/gi, 'INT');
-                      
-                  // [스마트 대소문자 교정기] 사용자가 따옴표 안의 데이터 값을 소문자로 적어도 정답 처리되도록 케이스 자동 보정
-                  const literalMap = {
-                      'active': 'Active', 'churned': 'Churned',
-                      'vip': 'VIP', 'gold': 'Gold', 'silver': 'Silver', 'bronze': 'Bronze',
-                      'pc': 'PC', 'mobile': 'Mobile', 'tablet': 'Tablet',
-                      'food': 'Food', 'tech': 'Tech'
-                  };
-                  Object.keys(literalMap).forEach(key => {
-                      const regex = new RegExp(`['"]${key}['"]`, 'gi');
-                      sqlForAlasql = sqlForAlasql.replace(regex, `'${literalMap[key]}'`);
-                  });
                       
                   if (sqlForAlasql.toUpperCase().includes('QUALIFY')) {
                       isWindowFunction = true;
@@ -535,35 +518,30 @@
 
                   sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
 
-                  const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
-                  let selectItems = [];
-                  if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
-                      selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
+                  // 서브쿼리 내부의 GROUP BY 1 도 처리
+                  sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
+                      const upToMatch = string.substring(0, offset);
+                      const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
                       
-                      sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
-                          const upToMatch = string.substring(0, offset);
-                          const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
+                      if (selectMatches.length > 0) {
+                          const lastSelect = selectMatches[selectMatches.length - 1][1];
+                          const selectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
+                          const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
                           
-                          if (selectMatches.length > 0) {
-                              const lastSelect = selectMatches[selectMatches.length - 1][1];
-                              const localSelectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
-                              const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
-                              
-                              const cols = indices.map(idx => {
-                                  if (!isNaN(idx) && idx > 0 && idx <= localSelectItems.length) {
-                                      let item = localSelectItems[idx - 1];
-                                      if (!item) return String(idx);
-                                      let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
-                                      if (aliasMatch) return aliasMatch[1].trim();
-                                      return item.trim();
-                                  }
-                                  return String(idx);
-                              });
-                              return `GROUP BY ${cols.join(', ')}${rest}`;
-                          }
-                          return match;
-                      });
-                  }
+                          const cols = indices.map(idx => {
+                              if (!isNaN(idx) && idx > 0 && idx <= selectItems.length) {
+                                  let item = selectItems[idx - 1];
+                                  if (!item) return String(idx); // 안전 장치 추가
+                                  let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
+                                  if (aliasMatch) return aliasMatch[1].trim();
+                                  return item.trim();
+                              }
+                              return String(idx);
+                          });
+                          return `GROUP BY ${cols.join(', ')}${rest}`;
+                      }
+                      return match;
+                  });
             
                   Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
                       alasql(`DROP TABLE IF EXISTS ${tbl}`);
@@ -577,57 +555,46 @@
                   executedData = alasql(sqlForAlasql);
                   
                   if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
-                      if (normalizedAnswer.includes('create or replace table') && !normalizedInput.includes('create or replace table')) {
+                      if (normalizedAnswer.includes('createorreplicatable') && !normalizedInput.includes('createorreplicatable')) {
                           isDataCorrect = false;
                           executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
                       } else {
-                          const isOrderRequired = goalText.includes('정렬') || normalizedAnswer.includes('order by') || normalizedAnswer.includes('limit');
+                          const isOrderRequired = currentEx.goal.includes('정렬') || normalizedAnswer.includes('orderby') || normalizedAnswer.includes('limit');
                           const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
 
-                          const normalizeValuesOnly = (data, sortRows) => {
+                          const normalize = (data, sortRows) => {
                               const mappedData = data.map(row => {
-                                  const vals = Object.values(row).map(v => v !== null && v !== undefined ? String(v) : 'NULL');
-                                  return JSON.stringify(vals);
+                                  const newRow = {};
+                                  Object.keys(row).forEach(key => {
+                                      const cleanKey = key.includes('.') ? key.split('.')[1] : key;
+                                      const lowerKey = cleanKey.toLowerCase();
+                                      
+                                      if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
+                                          return; 
+                                      }
+                                      newRow[lowerKey] = row[key];
+                                  });
+                                  
+                                  expectedKeys.forEach(ek => {
+                                      if (!(ek in newRow)) {
+                                          newRow[ek] = null;
+                                      }
+                                  });
+                                  
+                                  return JSON.stringify(Object.entries(newRow).sort());
                               });
                               return sortRows ? mappedData.sort() : mappedData;
                           };
                           
-                          const userValMatrix = normalizeValuesOnly(executedData, !isOrderRequired);
-                          const expValMatrix = normalizeValuesOnly(currentEx.res, !isOrderRequired);
+                          const userResult = normalize(executedData, !isOrderRequired);
+                          const expectedResult = normalize(currentEx.res, !isOrderRequired);
                           
-                          if (JSON.stringify(userValMatrix) === JSON.stringify(expValMatrix)) {
-                              isDataCorrect = true;
-                          }
-
-                          if (!isDataCorrect) {
-                              const normalize = (data, sortRows) => {
-                                  const mappedData = data.map(row => {
-                                      const newRow = {};
-                                      Object.keys(row).forEach(key => {
-                                          const cleanKey = key.includes('.') ? key.split('.')[1] : key;
-                                          const lowerKey = cleanKey.toLowerCase();
-                                          
-                                          if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
-                                              return; 
-                                          }
-                                          newRow[lowerKey] = row[key];
-                                      });
-                                      
-                                      expectedKeys.forEach(ek => {
-                                          if (!(ek in newRow)) {
-                                              newRow[ek] = null;
-                                          }
-                                      });
-                                      
-                                      return JSON.stringify(Object.entries(newRow).sort());
-                                  });
-                                  return sortRows ? mappedData.sort() : mappedData;
-                              };
-                              
-                              const userResult = normalize(executedData, !isOrderRequired);
-                              const expectedResult = normalize(currentEx.res, !isOrderRequired);
-                              
-                              if (JSON.stringify(userResult) === JSON.stringify(expectedResult)) {
+                          isDataCorrect = JSON.stringify(userResult) === JSON.stringify(expectedResult);
+                          
+                          if (!isDataCorrect && executedData.length === 1 && Object.keys(executedData[0]).length === 1 && Object.keys(currentEx.res[0]).length === 1) {
+                              const userVal = Object.values(executedData[0])[0];
+                              const expVal = Object.values(currentEx.res[0])[0];
+                              if (String(userVal) === String(expVal)) {
                                   isDataCorrect = true;
                               }
                           }
@@ -636,31 +603,26 @@
               } catch (err) {
                   executionError = "실행 오류: " + err.message;
                   
-                  if (noSpaceInput.includes('where') && noSpaceInput.match(/where.*,/i) && err.message.toLowerCase().includes('parse error')) {
+                  if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parse error')) {
                       executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다. (예: WHERE 1=1 AND salary > 300)";
                   }
-                  if (noSpaceInput.includes('count(distinct(')) {
+                  if (normalizedInput.includes('count(distinct(')) {
                       executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면(예: COUNT(DISTINCT(컬럼명))) SQL 엔진이 DISTINCT를 함수로 오해하여 구문 오류를 발생시킵니다. COUNT(DISTINCT 컬럼명) 형태로 괄호 없이 작성해 보세요.";
                   }
               }
 
+              // [핵심 조치] 가상 엔진이 뻗었을 때도 표 UI가 무조건 렌더링되도록 강제 빈 배열 보장
               let finalData = executedData;
               if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
-                  finalData = [];
+                  finalData = []; // 강제로 빈 배열로 만들어 표를 무조건 표시함
                   if (executionError) {
                       executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
                   }
               }
 
-              // [엔진 버그 보완] 서브쿼리 내 ROW_NUMBER 증발 복구 로직
-              if (isStringCorrect && goalText.includes('추출')) {
-                 if(finalData.length === 0 || (finalData.length > 0 && finalData[0].rn && Object.keys(finalData[0]).length === 1)) {
-                     executionError = "💡 [분석가 팁] 작성하신 쿼리는 실무에서 100% 정상 작동하는 완벽한 정답입니다! 결과 표에 0 Rows 가 뜨거나 rn만 나오는 것은 가상 엔진(Alasql)의 서브쿼리 버그 때문이며, 정답 처리와 함께 원본 결과표를 완벽히 복원해 드립니다.";
-                 }
-              }
-
-              if (goalText.includes('비정상 결제 탐지')) {
-                  if (noSpaceInput.includes('nameisnull') && !/[a-z0-9_`]+\.nameisnull/i.test(noSpaceInput)) {
+              // [실무 논리 검증] JOIN 시 별칭(Alias) 누락 방지 로직
+              if (currentEx.goal && currentEx.goal.includes('비정상 결제 탐지')) {
+                  if (normalizedInput.includes('nameisnull') && !/[a-z0-9_`]+\.nameisnull/i.test(normalizedInput)) {
                       return {
                           success: false,
                           data: finalData,
@@ -669,28 +631,30 @@
                   }
               }
 
+              // 필수 요구사항 누락 검사
               const rules = [
-                  { keyword: 'groupby', condition: noSpaceAnswer.includes('groupby'), error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." },
-                  { keyword: 'orderby', condition: goalText.includes('정렬') || noSpaceAnswer.includes('orderby'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
-                  { keyword: 'with', condition: /\bwith\b/.test(noSpaceAnswer), boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
-                  { keyword: '(select', condition: noSpaceAnswer.includes('(select'), alt: '(select', error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
-                  { keyword: 'row_number', condition: noSpaceAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
-                  { keyword: 'concat', condition: noSpaceAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
-                  { keyword: 'substr', condition: noSpaceAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
-                  { keyword: 'distinct', condition: noSpaceAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
+                  { keyword: 'groupby', condition: normalizedAnswer.includes('groupby'), error: "문법 오류 (그룹화 필요): 집계 함수(SUM, COUNT 등)와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용하여 기준 컬럼으로 묶어주어야 합니다." },
+                  { keyword: 'orderby', condition: currentEx.goal.includes('정렬') || normalizedAnswer.includes('orderby'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
+                  { keyword: 'with', condition: /\bwith\b/.test(normalizedAnswer), boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
+                  { keyword: '(select', condition: normalizedAnswer.includes('(select'), alt: '(select', error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
+                  { keyword: 'row_number', condition: normalizedAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
+                  { keyword: 'concat', condition: normalizedAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
+                  { keyword: 'substr', condition: normalizedAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
+                  { keyword: 'distinct', condition: normalizedAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
               ];
 
               for (const rule of rules) {
                   if (rule.condition) {
-                      let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(noSpaceInput) : noSpaceInput.includes(rule.keyword);
-                      if (rule.alt && !hasKeyword) hasKeyword = noSpaceInput.includes(rule.alt);
+                      let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(normalizedInput) : normalizedInput.includes(rule.keyword);
+                      if (rule.alt && !hasKeyword) hasKeyword = normalizedInput.includes(rule.alt);
                       if (!hasKeyword) {
-                          return { success: false, data: finalData, error: rule.error };
+                          return { success: false, data: finalData, error: rule.error }; // 무조건 finalData를 반환하여 표가 노출되도록 함
                       }
                   }
               }
 
-              if (/\bas['"][^'"]+['"]/i.test(noSpaceInput)) {
+              // 별칭 기호 오용 방지: AS 뒤에 작은/큰 따옴표 사용 금지 (백틱 허용)
+              if (/\bas['"][^'"]+['"]/i.test(normalizedInput)) {
                   return {
                       success: false,
                       data: finalData,
@@ -699,11 +663,16 @@
               }
               
               if (isDataCorrect || isStringCorrect) {
-                let displayData = isDataCorrect ? finalData : currentEx.res; 
+                // 정답인데 엔진 버그로 데이터가 증발했다면 정답 데이터 강제 주입
+                let displayData = finalData;
+                if (finalData.length === 0 || (finalData.length > 0 && Object.keys(finalData[0]).length < Object.keys(currentEx.res[0]).length)) {
+                    displayData = currentEx.res;
+                }
+                
                 if (showSuccessMessageInsteadOfData) {
                     displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
                 }
-                return { success: true, data: displayData, error: executionError };
+                return { success: true, data: displayData };
               } else {
                 return { 
                     success: false, 
@@ -713,6 +682,7 @@
               }
 
           } catch (criticalErr) {
+              // [핵심 조치] 엔진 코어에서 발생하는 모든 치명적 오류를 잡아내어 앱이 뻗지 않도록 렌더링 방어
               return { 
                   success: false, 
                   data: [], 
@@ -727,15 +697,15 @@
                 id: 1, title: "실무 1. 인기 요금제 현황 보고",
                 scenario: "[상품팀] 현재 활성화(Active)된 요금제를 이용 중인 고객들의 이름과 해당 요금제 명칭을 매칭하여\n인기 요금제 현황을 보고 싶어 합니다.",
                 target: "name, plan_name",
-                answer: "SELECT \n  c.name, \n  p.plan_name \nFROM customers c \nJOIN subscriptions s \n  ON c.cust_id = s.cust_id \nJOIN plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active'\n;",
+                answer: "SELECT \n  c.name, \n  p.plan_name \nFROM Customers c \nJOIN Subscriptions s \n  ON c.cust_id = s.cust_id \nJOIN Plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active'\n;",
                 res: [{name: '김철수', plan_name: '5G 프리미어 에센셜'}, {name: '최지우', plan_name: '5G 프리미어 에센셜'}],
-                hint: "customers(c), subscriptions(s), plans(p) 3개 테이블을 JOIN하고 WHERE status = 'Active' 조건으로 필터링하세요."
+                hint: "Customers(c), Subscriptions(s), Plans(p) 3개 테이블을 JOIN하고 WHERE status = 'Active' 조건으로 필터링하세요."
             },
             {
                 id: 2, title: "실무 2. 고위험 이탈 고객 분석",
                 scenario: "[마케팅팀] 가입일(join_date)이 2026년 2월 이후인 고객들 중, 이미 해지(Churned)한 고객들의 정보를 추출해주세요.\n나이(age)에 따라 '30대 이상', '30대 미만'으로 등급(age_group)을 나누어 주세요.",
                 target: "name, city, age_group",
-                answer: "SELECT \n  c.name, \n  c.city, \n  CASE \n    WHEN c.age >= 30 THEN '30대 이상' \n    ELSE '30대 미만' \n  END AS age_group \nFROM customers c \nJOIN subscriptions s \n  ON c.cust_id = s.cust_id \nWHERE c.join_date >= 20260201 \n  AND s.status = 'Churned'\n;",
+                answer: "SELECT \n  c.name, \n  c.city, \n  CASE \n    WHEN c.age >= 30 THEN '30대 이상' \n    ELSE '30대 미만' \n  END AS age_group \nFROM Customers c \nJOIN Subscriptions s \n  ON c.cust_id = s.cust_id \nWHERE c.join_date >= 20260201 \n  AND s.status = 'Churned'\n;",
                 res: [{name: '이영희', city: '경기', age_group: '30대 미만'}],
                 hint: "join_date 조건과 status 조건을 AND로 묶고, CASE WHEN을 사용해 age_group을 생성하세요."
             },
@@ -743,26 +713,68 @@
                 id: 3, title: "실무 3. 활성 고객 월 매출(MRR) 집계",
                 scenario: "[재무팀] 현재 활성화(Active) 상태인 구독 건들을 바탕으로,\n각 요금제별(plan_name) 총 예상 월 매출(total_revenue)을 집계해 주세요.",
                 target: "plan_name, total_revenue",
-                answer: "SELECT \n  p.plan_name, \n  SUM(p.price) AS total_revenue \nFROM subscriptions s \nJOIN plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active' \nGROUP BY p.plan_name\n;",
+                answer: "SELECT \n  p.plan_name, \n  SUM(p.price) AS total_revenue \nFROM Subscriptions s \nJOIN Plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active' \nGROUP BY p.plan_name\n;",
                 res: [{plan_name: '5G 프리미어 에센셜', total_revenue: 170000}],
-                hint: "subscriptions와 plans를 JOIN하고 Active만 필터링한 뒤, plan_name으로 GROUP BY하여 price의 SUM을 구하세요."
+                hint: "Subscriptions와 Plans를 JOIN하고 Active만 필터링한 뒤, plan_name으로 GROUP BY하여 price의 SUM을 구하세요."
+            },
+            {
+                id: 4, title: "실무 4. 지역별 활성 유저 분포 분석",
+                scenario: "[운영팀] 현재 활성화(Active)된 고객들이 어느 도시에 많은지 파악하려 합니다.\n도시별(city) 활성 고객 수(user_cnt)를 구하고 고객이 많은 순서대로 내림차순 정렬하세요.",
+                target: "city, user_cnt",
+                answer: "SELECT \n  c.city, \n  COUNT(*) AS user_cnt \nFROM Customers c \nJOIN Subscriptions s \n  ON c.cust_id = s.cust_id \nWHERE s.status = 'Active' \nGROUP BY c.city \nORDER BY 2 DESC\n;",
+                res: [{city: '서울', user_cnt: 2}, {city: '인천', user_cnt: 1}],
+                hint: "Customers와 Subscriptions를 JOIN하고 Active만 남긴 뒤, city로 GROUP BY 하고 COUNT(*)를 구하세요."
+            },
+            {
+                id: 5, title: "실무 5. 우수 고객 Top 2 타겟팅",
+                scenario: "[영업팀] 활성화(Active)된 구독 건 중 요금제 가격(price)이 가장 높은 상위 2명의 고객 이름과 가격을 추출해 주세요.\n(LIMIT을 활용하세요)",
+                target: "name, price",
+                answer: "SELECT \n  c.name, \n  p.price \nFROM Customers c \nJOIN Subscriptions s \n  ON c.cust_id = s.cust_id \nJOIN Plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active' \nORDER BY p.price DESC \nLIMIT 2\n;",
+                res: [{name: '김철수', price: 85000}, {name: '최지우', price: 85000}],
+                hint: "3개 테이블을 JOIN하고 Active 필터링 후, price 기준으로 DESC 정렬하고 LIMIT 2를 추가하세요."
+            },
+            {
+                id: 6, title: "실무 6. 특정 요금제 가입자 이메일 발송",
+                scenario: "[마케팅팀] 요금제 이름에 '5G'가 포함된(LIKE) 활성 고객들에게 안내 메일을 발송하려 합니다.\n해당하는 고객의 모든 정보(customers 테이블의 전체 컬럼)를 조회하세요.",
+                target: "customers 테이블 전체(*)",
+                answer: "SELECT \n  c.* \nFROM Customers c \nJOIN Subscriptions s \n  ON c.cust_id = s.cust_id \nJOIN Plans p \n  ON s.plan_id = p.plan_id \nWHERE s.status = 'Active' \n  AND p.plan_name LIKE '%5G%'\n;",
+                res: [{cust_id: 'C_001', name: '김철수', age: 32, city: '서울', join_date: 20260301}, {cust_id: 'C_004', name: '최지우', age: 35, city: '서울', join_date: 20260215}],
+                hint: "3개 테이블 JOIN 후, WHERE 조건에 status = 'Active' AND plan_name LIKE '%5G%'를 추가하세요."
+            },
+            {
+                id: 7, title: "실무 7. 30대 이상 시니어 타겟 요금제 분석",
+                scenario: "[기획팀] 30대 이상(age >= 30) 고객들이 주로 어떤 요금제를 쓰는지 보려 합니다.\n요금제별(plan_name) 가입자 수(cnt)를 집계하고, 가입자가 많은 순으로 정렬하세요.",
+                target: "plan_name, cnt",
+                answer: "SELECT \n  p.plan_name, \n  COUNT(*) AS cnt \nFROM Customers c \nJOIN Subscriptions s \n  ON c.cust_id = s.cust_id \nJOIN Plans p \n  ON s.plan_id = p.plan_id \nWHERE c.age >= 30 \nGROUP BY p.plan_name \nORDER BY 2 DESC\n;",
+                res: [{plan_name: '5G 프리미어 에센셜', cnt: 2}, {plan_name: '5G 스탠다드', cnt: 1}],
+                hint: "WHERE age >= 30 으로 필터링한 뒤 plan_name으로 GROUP BY 하고 개수를 세어 정렬하세요."
+            },
+            {
+                id: 8, title: "실무 8. 장기 미사용자 프로모션 타겟팅",
+                scenario: "[CRM팀] 2026년 2월(20260201 ~ 20260228)에 가입한 고객 중 해지(Churned)한 고객의\n이름(name)과 가입일(join_date)을 조회하세요.",
+                target: "name, join_date",
+                answer: "SELECT \n  c.name, \n  c.join_date \nFROM Customers c \nJOIN Subscriptions s \n  ON c.cust_id = s.cust_id \nWHERE c.join_date BETWEEN 20260201 AND 20260228 \n  AND s.status = 'Churned'\n;",
+                res: [{name: '박민수', join_date: 20260220}],
+                hint: "join_date BETWEEN A AND B 문법과 status = 'Churned' 조건을 AND로 결합하세요."
             }
         ];
         
         const PRAC_TABLE_DATA = {
-          customers: [
+          Customers: [
             { cust_id: 'C_001', name: '김철수', age: 32, city: '서울', join_date: 20260301 },
             { cust_id: 'C_002', name: '이영희', age: 28, city: '경기', join_date: 20260305 },
             { cust_id: 'C_003', name: '박민수', age: 54, city: '서울', join_date: 20260220 },
             { cust_id: 'C_004', name: '최지우', age: 35, city: '서울', join_date: 20260215 },
             { cust_id: 'C_005', name: '정다은', age: 31, city: '인천', join_date: 20260310 }
           ],
-          subscriptions: [
+          Subscriptions: [
             { sub_id: 'S_101', cust_id: 'C_001', plan_id: 'P_01', status: 'Active' },
             { sub_id: 'S_102', cust_id: 'C_002', plan_id: 'P_02', status: 'Churned' },
-            { sub_id: 'S_103', cust_id: 'C_004', plan_id: 'P_01', status: 'Active' }
+            { sub_id: 'S_103', cust_id: 'C_004', plan_id: 'P_01', status: 'Active' },
+            { sub_id: 'S_104', cust_id: 'C_003', plan_id: 'P_03', status: 'Churned' },
+            { sub_id: 'S_105', cust_id: 'C_005', plan_id: 'P_02', status: 'Active' }
           ],
-          plans: [
+          Plans: [
             { plan_id: 'P_01', plan_name: '5G 프리미어 에센셜', price: 85000 },
             { plan_id: 'P_02', plan_name: '5G 스탠다드', price: 75000 },
             { plan_id: 'P_03', plan_name: '(LTE) 추가 요금 데이터 69', price: 69000 }
@@ -770,11 +782,7 @@
         };
 
         const App = () => {
-          const [role, setRole] = useState(null); // null, 'admin', 'edu'
-          const [loginInput, setLoginInput] = useState('');
-          const [loginError, setLoginError] = useState('');
-
-          const [view, setView] = useState('structure'); // intro, structure, theory, practical
+          const [view, setView] = useState('theory'); // intro, structure, theory, practical
           const [activeStep, setActiveStep] = useState(0);
           const [exerciseIdx, setExerciseIdx] = useState(0);
           const [userQuery, setUserQuery] = useState('');
@@ -784,25 +792,10 @@
           const [pracQuery, setPracQuery] = useState('');
           const [pracResult, setPracResult] = useState(null);
           
-          const [structureStep, setStructureStep] = useState(0);
-
-          // 강사용 정답 토글 상태
-          const [showTheoryAnswer, setShowTheoryAnswer] = useState(false);
-          const [showPracAnswer, setShowPracAnswer] = useState(false);
-
-          const handleLogin = (e) => {
-              e.preventDefault();
-              const val = loginInput.trim();
-              if (val === 'shinhj6401') {
-                  setRole('admin');
-                  setLoginError('');
-              } else if (val.toLowerCase() === 'edu') {
-                  setRole('edu');
-                  setLoginError('');
-              } else {
-                  setLoginError('입장 코드가 올바르지 않습니다.');
-              }
-          };
+          const [userRole, setUserRole] = useState(null); // 'admin' or 'edu'
+          const [loginCode, setLoginCode] = useState('');
+          const [solvedTheory, setSolvedTheory] = useState([]);
+          const [solvedPrac, setSolvedPrac] = useState([]);
 
           const getHeaders = (data) => {
               if (!Array.isArray(data) || data.length === 0) return [];
@@ -825,239 +818,173 @@
                 script.async = true;
                 document.head.appendChild(script);
             }
+            
+            const st = localStorage.getItem('sql_solved_theory');
+            if(st) setSolvedTheory(JSON.parse(st));
+            const sp = localStorage.getItem('sql_solved_prac');
+            if(sp) setSolvedPrac(JSON.parse(sp));
           }, []);
-
-          if (!role) {
-              return (
-                  <div className="flex items-center justify-center h-screen bg-slate-50 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-100 rounded-full blur-3xl opacity-50 translate-x-1/2 -translate-y-1/2"></div>
-                      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-100 rounded-full blur-3xl opacity-50 -translate-x-1/2 translate-y-1/2"></div>
-                      
-                      <form onSubmit={handleLogin} className="bg-white p-12 rounded-[3rem] shadow-2xl shadow-slate-200/50 w-[420px] flex flex-col gap-8 text-center border-4 border-slate-100 relative z-10">
-                          <div className="flex justify-center">
-                              <div className="bg-slate-900 p-5 rounded-3xl text-white shadow-xl rotate-3"><Icon name="terminal" size={40} /></div>
-                          </div>
-                          <div>
-                              <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">SQL MASTER</h1>
-                              <p className="text-sm font-bold text-blue-600 tracking-widest uppercase">Edu-tech Platform</p>
-                          </div>
-                          <div className="text-left mt-4 space-y-3">
-                              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-2">Access Code</label>
-                              <input 
-                                  type="password" 
-                                  value={loginInput} 
-                                  onChange={e => setLoginInput(e.target.value)} 
-                                  className="w-full bg-slate-50 border-2 border-slate-200 p-4 rounded-2xl text-center font-black tracking-widest focus:border-blue-600 focus:bg-white outline-none transition-all" 
-                                  placeholder="입장 코드를 입력하세요" 
-                              />
-                              {loginError && <p className="text-rose-500 text-[11px] font-black text-center mt-2 animate-in slide-in-from-top-1">{loginError}</p>}
-                          </div>
-                          <button type="submit" className="w-full bg-blue-600 text-white font-black text-lg py-5 rounded-2xl hover:bg-blue-700 hover:-translate-y-1 transition-all shadow-xl shadow-blue-600/30 mt-2">입장하기</button>
-                      </form>
-                  </div>
-              );
-          }
 
           const currentData = STEPS_DATA[activeStep] || STEPS_DATA[0];
           const currentPrac = PRACTICAL_DATA[pracStep];
           const getAlignmentClass = (val) => (typeof val === 'number' ? 'text-left' : 'text-right');
+          
+          const handleLogin = () => {
+              if (loginCode === 'shinhj6401') {
+                  setUserRole('admin');
+              } else if (loginCode === 'edu') {
+                  setUserRole('edu');
+              } else {
+                  alert('올바르지 않은 입장 코드입니다.');
+              }
+          };
+          
+          const isTheoryUnlocked = (idx) => {
+              if (userRole === 'admin') return true;
+              if (idx === 0) return true;
+              return solvedTheory.includes(`${activeStep}_${idx - 1}`);
+          };
+          
+          const isPracUnlocked = (idx) => {
+              if (userRole === 'admin') return true;
+              if (idx === 0) return true;
+              return solvedPrac.includes(idx - 1);
+          };
+
+          if (!userRole) {
+              return (
+                  <div className="fixed inset-0 bg-slate-900/95 flex justify-center items-center z-[9999] backdrop-blur-sm">
+                      <div className="bg-white p-10 rounded-3xl text-center w-[360px] shadow-2xl">
+                          <h2 className="mt-0 text-slate-800 text-2xl font-black mb-2">학습 시스템 입장</h2>
+                          <p className="text-sm text-slate-500 font-medium mb-6">부여받은 입장 코드를 입력하세요</p>
+                          <input 
+                              type="password" 
+                              placeholder="••••••••" 
+                              className="w-full p-4 mb-6 border-2 border-slate-200 rounded-xl box-border text-lg text-center focus:outline-none focus:border-blue-600 font-mono tracking-widest"
+                              value={loginCode}
+                              onChange={(e) => setLoginCode(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                          />
+                          <button onClick={handleLogin} className="w-full bg-blue-600 text-white border-none p-4 rounded-xl cursor-pointer font-black transition-all hover:bg-blue-700 text-lg shadow-lg hover:shadow-xl">입장하기</button>
+                      </div>
+                  </div>
+              );
+          }
 
           return (
             <div className="app-container">
               <nav className="nav-bar">
                 <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView('intro')}>
                   <div className="bg-slate-900 p-2.5 rounded-2xl text-white shadow-lg"><Icon name="terminal" size={24} /></div>
-                  <div><h1 className="text-xl font-black leading-none">SQL MASTER</h1><span className="text-[10px] font-black text-blue-600 uppercase">Edu-tech</span></div>
+                  <div><h1 className="text-xl font-black leading-none">SQL MASTER</h1><span className="text-[10px] font-black text-blue-600 uppercase">이론 및 실무</span></div>
                 </div>
                 <div className="flex items-center gap-10">
                   <button onClick={() => setView('structure')} className={`text-[15px] font-black transition-colors ${view === 'structure' ? 'text-blue-600 underline underline-offset-8 decoration-2' : 'text-slate-500'}`}>구조</button>
                   <button onClick={() => setView('theory')} className={`text-[15px] font-black transition-colors ${view === 'theory' ? 'text-blue-600 underline underline-offset-8 decoration-2' : 'text-slate-500'}`}>이론 및 실습</button>
                   <button onClick={() => setView('practical')} className={`text-[15px] font-black transition-colors ${view === 'practical' ? 'text-blue-600 underline underline-offset-8 decoration-2' : 'text-slate-500'}`}>실무 적용</button>
                 </div>
-                <div className="w-48 flex justify-end">
-                  <div className={`flex items-center gap-3 px-4 py-2 bg-white border rounded-2xl shadow-sm ${role === 'admin' ? 'border-rose-100' : 'border-blue-100'}`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white shadow-sm ${role === 'admin' ? 'bg-rose-500' : 'bg-blue-600'}`}><Icon name="user" size={12} /></div>
-                    <span className="text-[11px] font-black text-slate-700 whitespace-nowrap">{role === 'admin' ? '강사 (Admin)' : '학습자 (Edu)'}</span>
-                    <button onClick={() => {setRole(null); setLoginInput('');}} className="ml-1 text-slate-300 hover:text-rose-500 transition-colors" title="로그아웃"><Icon name="log-out" size={14}/></button>
+                <div className="w-32 flex justify-end">
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${userRole === 'admin' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                    <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm"><Icon name="user" size={12} className={userRole === 'admin' ? 'text-rose-600' : 'text-blue-600'} /></div>
+                    <span className="text-[11px] font-black">{userRole === 'admin' ? '강사' : '학습자'}</span>
                   </div>
                 </div>
               </nav>
 
               <div className="main-wrapper">
                 
-                {}
                 {view === 'intro' && (
-                  <div className="content flex flex-col justify-center items-center h-full pb-0 bg-white relative overflow-hidden">
-                    <div className="absolute top-10 left-10 w-96 h-96 bg-blue-50 rounded-full blur-3xl opacity-50"></div>
-                    <div className="absolute bottom-10 right-10 w-96 h-96 bg-emerald-50 rounded-full blur-3xl opacity-50"></div>
-                    <div className="relative z-10 text-center">
-                        <div className="inline-flex items-center gap-3 bg-blue-50 text-blue-600 px-5 py-2 rounded-full text-[13px] font-black tracking-widest border border-blue-100 shadow-sm mb-10"><Icon name="sparkles" size={16} /> 실전형 SQL 커리큘럼</div>
-                        <h1 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter text-center leading-tight mb-8">데이터 분석의 기초</h1>
-                        <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed font-medium text-center break-keep">엑셀의 한계를 넘어 데이터의 흐름을 논리적으로 이해하는 과정입니다.<br />단순 암기가 아닌 실무 중심 11단계 커리큘럼을 시작하세요.</p>
+                  <div className="content flex flex-col justify-center items-center h-full pb-0 bg-white">
+                    <div className="inline-flex items-center gap-3 bg-blue-50 text-blue-600 px-5 py-2 rounded-full text-[13px] font-black tracking-widest border border-blue-100 shadow-sm mb-10"><Icon name="sparkles" size={16} /> 실전형 SQL 커리큘럼</div>
+                    <h1 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter text-center leading-tight mb-8">데이터 분석의 기초</h1>
+                    <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed font-medium text-center break-keep">엑셀의 한계를 넘어 데이터의 흐름을 논리적으로 이해하는 과정입니다.<br />단순 암기가 아닌 실무 중심 11단계 커리큘럼을 시작하세요.</p>
+                  </div>
+                )}
+
+                {view === 'structure' && (
+                  <div className="content pt-12">
+                    <div className="max-w-6xl mx-auto space-y-16 animate-in fade-in duration-1000 pb-32">
+                      <div className="text-center space-y-4"><h2 className="text-4xl font-black text-slate-900">칸(Cell)의 엑셀 vs 집합(Set)의 SQL</h2><p className="text-slate-500 text-xl font-medium">도구의 변화가 분석의 질을 결정합니다.</p></div>
+                      
+                      <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-stretch">
+                        <div className="bg-white p-12 rounded-[3rem] border-2 border-slate-100 shadow-sm flex flex-col h-full hover:border-emerald-200 transition-colors">
+                          <div className="flex items-center gap-3 text-emerald-600 font-black text-2xl mb-8"><Icon name="table" size={28}/> <span>Excel : 시각 중심</span></div>
+                          <div className="flex-grow space-y-6 text-slate-600 text-lg font-medium">
+                            <div className="flex gap-3"><Icon name="check-square" className="text-emerald-500 flex-none mt-1" size={24}/> <span><b>개별 조작:</b> 특정 셀의 값을 직접 수정하는 수작업 방식입니다.</span></div>
+                            <div className="flex gap-3"><Icon name="check-square" className="text-emerald-500 flex-none mt-1" size={24}/> <span><b>용량 한계:</b> 100만 행 이상은 처리 속도가 급격히 저하됩니다.</span></div>
+                          </div>
+                          <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 text-sm font-mono text-slate-400 mt-10">=VLOOKUP(A2, 'Info'!A:D, 3, 0)</div>
+                        </div>
+                        
+                        <div className="bg-white p-12 rounded-[3rem] border-2 border-blue-100 shadow-xl shadow-blue-50 flex flex-col h-full relative overflow-hidden hover:border-blue-400 transition-colors">
+                          <div className="absolute -top-10 -right-10 opacity-5 text-blue-600"><Icon name="database" size={200}/></div>
+                          <div className="flex items-center gap-3 text-blue-600 font-black text-2xl mb-8"><Icon name="database" size={28}/> <span>SQL : 논리 중심</span></div>
+                          <div className="flex-grow space-y-6 text-slate-600 text-lg font-medium z-10 relative">
+                            <div className="flex gap-3"><Icon name="check-square" className="text-blue-500 flex-none mt-1" size={24}/> <span><b>집합 조작:</b> 수억 줄의 데이터를 동시에 조건부 일괄 처리합니다.</span></div>
+                            <div className="flex gap-3"><Icon name="check-square" className="text-blue-500 flex-none mt-1" size={24}/> <span><b>무한 용량:</b> 빅쿼리는 페타바이트급 데이터도 초 단위로 연산합니다.</span></div>
+                          </div>
+                          <div className="bg-slate-900 p-8 rounded-2xl border border-slate-700 text-sm font-mono text-blue-300 mt-10 z-10 relative">SELECT <br/>&nbsp;&nbsp;category, <br/>&nbsp;&nbsp;SUM(price) <br/>FROM orders <br/>GROUP BY 1 <br/>;</div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-[3rem] p-12 shadow-sm border-2 border-slate-100 mt-16 relative overflow-hidden">
+                         <h3 className="text-3xl font-black text-slate-900 mb-8 flex items-center gap-3"><Icon name="list-ordered" size={32} className="text-blue-600"/> SQL의 두 가지 순서: 작성 vs 실행</h3>
+                         <p className="text-lg font-medium text-slate-600 mb-10 leading-relaxed">컴퓨터는 우리가 쿼리를 적은 순서대로 읽지 않습니다.<br/>이 '실행 순서'를 이해해야 에러가 났을 때 원인을 정확히 찾을 수 일습니다.</p>
+                         
+                         <div className="grid md:grid-cols-2 gap-10">
+                            <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200">
+                                <div className="text-blue-600 font-black text-lg mb-6 flex items-center gap-2"><Icon name="code" size={20}/> 작성 순서 (사람의 언어)</div>
+                                <div className="space-y-3 font-mono text-sm">
+                                    <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">1. SELECT</span> : 출력할 컬럼 지정</div>
+                                    <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">2. FROM</span> : 테이블 선택</div>
+                                    <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">3. WHERE</span> : 원본 데이터 필터링</div>
+                                    <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">4. GROUP BY</span> : 데이터 그룹화</div>
+                                    <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">5. HAVING</span> : 그룹화 결과 필터링</div>
+                                    <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">6. ORDER BY</span> : 정렬</div>
+                                </div>
+                            </div>
+                            <div className="bg-blue-50/50 rounded-2xl p-8 border border-blue-200 shadow-inner">
+                                <div className="text-rose-500 font-black text-lg mb-6 flex items-center gap-2"><Icon name="cpu" size={20}/> 논리적 실행 순서 (컴퓨터의 언어)</div>
+                                <div className="space-y-3 font-mono text-sm">
+                                    <div className="p-3 bg-blue-600 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">1</span> <span>FROM (어디서 가져올까?)</span></div>
+                                    <div className="p-3 bg-blue-500 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">2</span> <span>WHERE (어떤 데이터를 거를까?)</span></div>
+                                    <div className="p-3 bg-blue-400 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">3</span> <span>GROUP BY (어떻게 묶을까?)</span></div>
+                                    <div className="p-3 bg-blue-400 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">4</span> <span>HAVING (묶은 것 중 무엇을 남길까?)</span></div>
+                                    <div className="p-3 bg-emerald-500 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">5</span> <span>SELECT (무엇을 보여줄까? + 별칭 생성)</span></div>
+                                    <div className="p-3 bg-emerald-400 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">6</span> <span>ORDER BY (어떻게 정렬할까?)</span></div>
+                                </div>
+                            </div>
+                         </div>
+                         
+                         <div className="mt-8 bg-amber-50 p-6 rounded-2xl border border-amber-200">
+                             <p className="text-slate-700 font-medium text-sm leading-relaxed">
+                                 <strong className="text-amber-600">💡 핵심 인사이트:</strong> SELECT 절에서 AS 키워드로 생성한 <strong>'별칭(Alias)'</strong>은 5번째에야 만들어집니다. <br/>따라서 2번째로 실행되는 WHERE 절이나 3번째로 실행되는 GROUP BY 절에서는 그 별칭을 부르면 컴퓨터가 "그게 누군데?"라며 에러를 뱉습니다. 반면 가장 마지막에 실행되는 ORDER BY에서는 별칭을 자유롭게 사용할 수 있습니다.
+                             </p>
+                         </div>
+                      </div>
+
+                      <div className="bg-slate-900 rounded-[3rem] p-12 text-slate-300 space-y-8 shadow-2xl relative overflow-hidden mt-16">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-emerald-400"></div>
+                        <h3 className="text-3xl font-black text-white flex items-center gap-3"><Icon name="book-open" size={32}/> 엑셀 유저를 위한 DB 필수 용어 매칭</h3>
+                        <p className="text-base font-medium leading-relaxed max-w-3xl">엑셀의 작업 환경이 데이터베이스(DB)에서는 어떻게 불리는지 이해하면 SQL이 훨씬 쉬워집니다.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
+                          <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700"><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 파일 / 시트</div><div className="text-white font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Table (테이블)</div><p className="text-sm text-slate-400 leading-snug">데이터가 담겨 있는 가장 큰 보관 단위입니다.</p></div>
+                          <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700"><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 열 (A, B, C...)</div><div className="text-white font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Column (컬럼/열)</div><p className="text-sm text-slate-400 leading-snug">데이터의 속성(이름, 나이 등)을 나타내는 세로 줄입니다.</p></div>
+                          <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700"><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 행 (1, 2, 3...)</div><div className="text-white font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Row (로우/행)</div><p className="text-sm text-slate-400 leading-snug">개별 사용자나 주문 등 1건의 데이터를 나타내는 가로 줄입니다.</p></div>
+                          <div className="bg-blue-900/40 p-6 rounded-2xl border border-blue-500/50 relative overflow-hidden"><div className="absolute top-3 right-3 text-blue-400"><Icon name="key" size={20}/></div><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 셀 서식</div><div className="text-blue-300 font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Schema (스키마)</div><p className="text-sm text-blue-100 leading-snug"><b>매우 중요!</b> 데이터의 타입(문자, 숫자 등)을 강제하는 '설계도'입니다. 엑셀과 달리 스키마를 어기면 데이터가 입력되지 않아 오류를 원천 차단합니다.</p></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {}
-                {view === 'structure' && (
-                  <React.Fragment>
-                    <aside className="sidebar">
-                      <div className="space-y-2 pb-10">
-                        <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">Structure</h2>
-                        {[
-                          { title: "Excel vs SQL", subtitle: "도구의 패러다임 전환" },
-                          { title: "필수 용어 매칭", subtitle: "엑셀과 데이터베이스 비교" },
-                          { title: "작성 vs 실행 순서", subtitle: "SQL의 논리적 흐름" },
-                          { title: "실전 작성 프로세스", subtitle: "테이블에서 데이터 추출하기" }
-                        ].map((s, i) => (
-                          <button key={i} onClick={() => { setStructureStep(i); document.getElementById('structureContentScroll').scrollTop = 0; }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${structureStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'}`}>
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-none ${structureStep === i ? 'bg-white/20' : 'bg-slate-100'}`}>{i + 1}</div>
-                            <div className="overflow-hidden leading-tight"><div className="text-[11px] font-black truncate">{s.title}</div><div className="text-[9px] font-bold opacity-70 uppercase mt-1 tracking-tighter">{s.subtitle}</div></div>
-                          </button>
-                        ))}
-                      </div>
-                    </aside>
-                    <main className="content flex-1 overflow-y-auto bg-slate-50/50" id="structureContentScroll">
-                      <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-32 pt-8">
-                        
-                        {structureStep === 0 && (
-                          <div className="space-y-16">
-                            <div className="text-center space-y-4">
-                              <h2 className="text-4xl font-black text-slate-900">Excel vs SQL</h2>
-                              <p className="text-slate-500 text-xl font-medium">도구의 변화가 분석의 질을 결정합니다.</p>
-                            </div>
-                            <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-stretch">
-                              <div className="bg-white p-12 rounded-[3rem] border-2 border-slate-100 shadow-sm flex flex-col h-full hover:border-emerald-200 transition-colors">
-                                <div className="flex items-center gap-3 text-emerald-600 font-black text-2xl mb-8"><Icon name="table" size={28}/> <span>Excel : 시각 중심</span></div>
-                                <div className="flex-grow space-y-6 text-slate-600 text-lg font-medium">
-                                  <div className="flex gap-3"><Icon name="check-square" className="text-emerald-500 flex-none mt-1" size={24}/> <span><b>개별 조작:</b> 특정 셀의 값을 직접 수정하는 수작업 방식입니다.</span></div>
-                                  <div className="flex gap-3"><Icon name="check-square" className="text-emerald-500 flex-none mt-1" size={24}/> <span><b>용량 한계:</b> 100만 행 이상은 처리 속도가 급격히 저하됩니다.</span></div>
-                                </div>
-                                <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 text-sm font-mono text-slate-400 mt-10">=VLOOKUP(A2, 'Info'!A:D, 3, 0)</div>
-                              </div>
-                              <div className="bg-white p-12 rounded-[3rem] border-2 border-blue-100 shadow-xl shadow-blue-50 flex flex-col h-full relative overflow-hidden hover:border-blue-400 transition-colors">
-                                <div className="absolute -top-10 -right-10 opacity-5 text-blue-600"><Icon name="database" size={200}/></div>
-                                <div className="flex items-center gap-3 text-blue-600 font-black text-2xl mb-8"><Icon name="database" size={28}/> <span>SQL : 논리 중심</span></div>
-                                <div className="flex-grow space-y-6 text-slate-600 text-lg font-medium z-10 relative">
-                                  <div className="flex gap-3"><Icon name="check-square" className="text-blue-500 flex-none mt-1" size={24}/> <span><b>집합 조작:</b> 수억 줄의 데이터를 동시에 조건부 일괄 처리합니다.</span></div>
-                                  <div className="flex gap-3"><Icon name="check-square" className="text-blue-500 flex-none mt-1" size={24}/> <span><b>무한 용량:</b> 빅쿼리는 페타바이트급 데이터도 초 단위로 연산합니다.</span></div>
-                                </div>
-                                <div className="bg-slate-900 p-8 rounded-2xl border border-slate-700 text-sm font-mono text-blue-300 mt-10 z-10 relative">SELECT <br/>&nbsp;&nbsp;category, <br/>&nbsp;&nbsp;SUM(price) <br/>FROM orders <br/>GROUP BY 1 <br/>;</div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {structureStep === 1 && (
-                          <div className="bg-slate-900 rounded-[3rem] p-12 text-slate-300 space-y-8 shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-emerald-400"></div>
-                            <h3 className="text-3xl font-black text-white flex items-center gap-3"><Icon name="book-open" size={32}/> 엑셀 유저를 위한 DB 필수 용어 매칭</h3>
-                            <p className="text-base font-medium leading-relaxed max-w-3xl">엑셀의 작업 환경이 데이터베이스(DB)에서는 어떻게 불리는지 이해하면 SQL이 훨씬 쉬워집니다.</p>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4">
-                              <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700"><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 파일 / 시트</div><div className="text-white font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Table (테이블)</div><p className="text-sm text-slate-400 leading-snug">데이터가 담겨 있는 가장 큰 보관 단위입니다.</p></div>
-                              <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700"><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 열 (A, B, C...)</div><div className="text-white font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Column (컬럼/열)</div><p className="text-sm text-slate-400 leading-snug">데이터의 속성(이름, 나이 등)을 나타내는 세로 줄입니다.</p></div>
-                              <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700"><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 행 (1, 2, 3...)</div><div className="text-white font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Row (로우/행)</div><p className="text-sm text-slate-400 leading-snug">개별 사용자나 주문 등 1건의 데이터를 나타내는 가로 줄입니다.</p></div>
-                              <div className="bg-blue-900/40 p-6 rounded-2xl border border-blue-500/50 relative overflow-hidden"><div className="absolute top-3 right-3 text-blue-400"><Icon name="key" size={20}/></div><div className="text-emerald-400 font-bold text-sm mb-1">Excel : 셀 서식</div><div className="text-blue-300 font-black text-xl mb-2 flex items-center gap-2"><Icon name="arrow-right-left" size={18}/> Schema (스키마)</div><p className="text-sm text-blue-100 leading-snug"><b>매우 중요!</b> 데이터의 타입(문자, 숫자 등)을 강제하는 '설계도'입니다. 엑셀과 달리 스키마를 어기면 데이터가 입력되지 않아 오류를 원천 차단합니다.</p></div>
-                            </div>
-                          </div>
-                        )}
-
-                        {structureStep === 2 && (
-                          <div className="bg-white rounded-[3rem] p-12 shadow-sm border-2 border-slate-100 relative overflow-hidden">
-                             <h3 className="text-3xl font-black text-slate-900 mb-8 flex items-center gap-3"><Icon name="list-ordered" size={32} className="text-blue-600"/> SQL의 두 가지 순서: 작성 vs 실행</h3>
-                             <p className="text-lg font-medium text-slate-600 mb-10 leading-relaxed">컴퓨터는 우리가 쿼리를 적은 순서대로 읽지 않습니다.<br/>이 '실행 순서'를 이해해야 에러가 났을 때 원인을 정확히 찾을 수 있습니다.</p>
-                             
-                             <div className="grid md:grid-cols-2 gap-10">
-                                <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200">
-                                    <div className="text-blue-600 font-black text-lg mb-6 flex items-center gap-2"><Icon name="code" size={20}/> 작성 순서 (사람의 언어)</div>
-                                    <div className="space-y-3 font-mono text-sm">
-                                        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">1. SELECT</span> : 출력할 컬럼 지정</div>
-                                        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">2. FROM</span> : 테이블 선택</div>
-                                        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">3. WHERE</span> : 원본 데이터 필터링</div>
-                                        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">4. GROUP BY</span> : 데이터 그룹화</div>
-                                        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">5. HAVING</span> : 그룹화 결과 필터링</div>
-                                        <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm"><span className="text-blue-500 font-bold">6. ORDER BY</span> : 정렬</div>
-                                    </div>
-                                </div>
-                                <div className="bg-blue-50/50 rounded-2xl p-8 border border-blue-200 shadow-inner">
-                                    <div className="text-rose-500 font-black text-lg mb-6 flex items-center gap-2"><Icon name="cpu" size={20}/> 논리적 실행 순서 (컴퓨터의 언어)</div>
-                                    <div className="space-y-3 font-mono text-sm">
-                                        <div className="p-3 bg-blue-600 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">1</span> <span>FROM (어디서 가져올까?)</span></div>
-                                        <div className="p-3 bg-blue-500 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">2</span> <span>WHERE (어떤 데이터를 거를까?)</span></div>
-                                        <div className="p-3 bg-blue-400 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">3</span> <span>GROUP BY (어떻게 묶을까?)</span></div>
-                                        <div className="p-3 bg-blue-400 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">4</span> <span>HAVING (묶은 것 중 무엇을 남길까?)</span></div>
-                                        <div className="p-3 bg-emerald-500 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">5</span> <span>SELECT (무엇을 보여줄까? + 별칭 생성)</span></div>
-                                        <div className="p-3 bg-emerald-400 text-white rounded-xl shadow-sm flex items-center gap-3"><span className="bg-white/20 px-2 py-0.5 rounded text-xs">6</span> <span>ORDER BY (어떻게 정렬할까?)</span></div>
-                                    </div>
-                                </div>
-                             </div>
-                             
-                             <div className="mt-8 bg-amber-50 p-6 rounded-2xl border border-amber-200">
-                                 <p className="text-slate-700 font-medium text-sm leading-relaxed">
-                                     <strong className="text-amber-600">💡 핵심 인사이트:</strong> SELECT 절에서 AS 키워드로 생성한 <strong>'별칭(Alias)'</strong>은 5번째에야 만들어집니다. <br/>따라서 2번째로 실행되는 WHERE 절이나 3번째로 실행되는 GROUP BY 절에서는 그 별칭을 부르면 컴퓨터가 "그게 누군데?"라며 에러를 뱉습니다. 반면 가장 마지막에 실행되는 ORDER BY에서는 별칭을 자유롭게 사용할 수 있습니다.
-                                 </p>
-                             </div>
-                          </div>
-                        )}
-
-                        {structureStep === 3 && (
-                          <div className="space-y-8 bg-white p-12 rounded-[3rem] border-2 border-slate-100 shadow-sm">
-                            <div className="space-y-4">
-                              <div className="inline-flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest bg-blue-50 px-4 py-2 rounded-full border border-blue-100"><Icon name="sparkles" size={14} /> 실전 가이드</div>
-                              <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">테이블 내에서 SQL 구성하는 법</h2>
-                              <p className="text-xl text-slate-500 font-medium break-keep">빈 화면(Blank Canvas)에서 원하는 데이터를 추출하기 위한 실무자의 5단계 사고 흐름입니다.</p>
-                            </div>
-
-                            <div className="relative border-l-4 border-slate-200 ml-6 space-y-12 pb-12 mt-12">
-                              <div className="relative pl-10">
-                                <div className="absolute -left-[22px] bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-black shadow-lg border-4 border-[#ffffff]">1</div>
-                                <h3 className="text-2xl font-black text-slate-800 mb-3">어떤 데이터를 뽑을지 명확히 정의하기</h3>
-                                <p className="text-slate-600 text-lg leading-relaxed mb-4 break-keep">코드를 작성하기 전, "비즈니스 질문"을 먼저 구체적으로 명확히 해야 합니다.<br/><span className="text-blue-600 font-medium">예: "지난달 결제를 완료한 VIP 고객들의 총 구매액은 얼마인가?"</span></p>
-                              </div>
-                              <div className="relative pl-10">
-                                <div className="absolute -left-[22px] bg-slate-200 text-slate-600 w-10 h-10 rounded-full flex items-center justify-center font-black shadow-sm border-4 border-[#ffffff]">2</div>
-                                <h3 className="text-2xl font-black text-slate-800 mb-3">조회할 원본(Raw) 테이블 찾기 (FROM)</h3>
-                                <p className="text-slate-600 text-lg leading-relaxed mb-4 break-keep">원하는 데이터가 어느 테이블에 있는지 탐색하고, 데이터 형태(스키마) 파악합니다.<br/><span className="text-slate-500 font-mono text-sm bg-slate-100 px-2 py-1 rounded">예: users 테이블과 orders 테이블 확인</span></p>
-                              </div>
-                              <div className="relative pl-10">
-                                <div className="absolute -left-[22px] bg-slate-200 text-slate-600 w-10 h-10 rounded-full flex items-center justify-center font-black shadow-sm border-4 border-[#ffffff]">3</div>
-                                <h3 className="text-2xl font-black text-slate-800 mb-3">원하는 컬럼과 추출 범위 정하기 (SELECT & WHERE)</h3>
-                                <p className="text-slate-600 text-lg leading-relaxed mb-4 break-keep">수천만 건의 데이터 중 필요한 조건(기간, 등급 등)을 설정하여 데이터를 최소한으로 좁히고, 필요한 컬럼만 선택합니다.<br/><span className="text-slate-500 font-mono text-sm bg-slate-100 px-2 py-1 rounded">예: WHERE status = '완료' AND tier = 'VIP'</span></p>
-                              </div>
-                              <div className="relative pl-10">
-                                <div className="absolute -left-[22px] bg-slate-200 text-slate-600 w-10 h-10 rounded-full flex items-center justify-center font-black shadow-sm border-4 border-[#ffffff]">4</div>
-                                <h3 className="text-2xl font-black text-slate-800 mb-3">테이블 결합 및 기준별 집계 (JOIN & GROUP BY)</h3>
-                                <p className="text-slate-600 text-lg leading-relaxed mb-4 break-keep">흩어진 정보를 공통 키(Key)로 합치고, 필요한 기준(고객별, 월별 등)으로 데이터를 묶어서 요약합니다.<br/><span className="text-slate-500 font-mono text-sm bg-slate-100 px-2 py-1 rounded">예: JOIN으로 결합 후 GROUP BY cust_id로 묶어 SUM(price) 계산</span></p>
-                              </div>
-                              <div className="relative pl-10">
-                                <div className="absolute -left-[22px] bg-slate-200 text-slate-600 w-10 h-10 rounded-full flex items-center justify-center font-black shadow-sm border-4 border-[#ffffff]">5</div>
-                                <h3 className="text-2xl font-black text-slate-800 mb-3">결과 검증 및 보기 좋게 정렬하기 (ORDER BY)</h3>
-                                <p className="text-slate-600 text-lg leading-relaxed mb-4 break-keep">출력된 데이터가 상식적인지(1건 뻥튀기가 없는지 등) 검증하고, 보고서에 쓰기 좋게 내림차순 등으로 정렬합니다.<br/><span className="text-slate-500 font-mono text-sm bg-slate-100 px-2 py-1 rounded">예: ORDER BY 총구매액 DESC</span></p>
-                              </div>
-                            </div>
-                            
-                            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex gap-4 shadow-sm">
-                                <Icon name="check-circle" className="text-emerald-500 flex-none mt-1" size={24}/>
-                                <p className="text-emerald-800 font-medium leading-relaxed break-keep">
-                                    <b>실무자 팁:</b> 처음부터 완벽한 쿼리를 한 번에 쓰려고 하지 마세요. <code>SELECT * FROM 테이블 LIMIT 10;</code> 으로 데이터를 먼저 눈으로 확인한 뒤, <b>FROM → WHERE → JOIN → GROUP BY → SELECT</b> 순서로 살을 붙여 나가는 것이 실무 데이터 분석가들의 일반적인 작성 패턴입니다.
-                                </p>
-                            </div>
-                          </div>
-                        )}
-
-                      </div>
-                    </main>
-                  </React.Fragment>
-                )}
-
-                {}
                 {view === 'theory' && (
                   <React.Fragment>
                     <aside className="sidebar">
                       <div className="space-y-2 pb-10">
                         <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">11-Step 로드맵</h2>
                         {STEPS_DATA.map((s, i) => (
-                          <button key={i} onClick={() => { setActiveStep(i); setExerciseIdx(0); setUserQuery(''); setEngineResult(null); setShowTheoryAnswer(false); document.getElementById('mainContentScroll').scrollTop = 0; }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${activeStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'}`}>
+                          <button key={i} onClick={() => { setActiveStep(i); setExerciseIdx(0); setUserQuery(''); setEngineResult(null); document.getElementById('mainContentScroll').scrollTop = 0; }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${activeStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'}`}>
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-none ${activeStep === i ? 'bg-white/20' : 'bg-slate-100'}`}>{i + 1}</div>
                             <div className="overflow-hidden leading-tight"><div className="text-[11px] font-black truncate">{s.title}</div><div className="text-[9px] font-bold opacity-70 mt-1 uppercase whitespace-pre-wrap leading-tight">{s.grammar}</div></div>
                           </button>
@@ -1065,8 +992,8 @@
                       </div>
                     </aside>
 
-                    <main className="content" id="mainContentScroll">
-                      <div className="max-w-6xl mx-auto space-y-16 animate-in fade-in duration-500 pb-40">
+                    <main className="content relative" id="mainContentScroll">
+                      <div className="max-w-6xl mx-auto space-y-16 animate-in fade-in duration-500 pb-40 relative">
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 text-blue-600 font-black text-[13px] uppercase tracking-wider"><Icon name="book-open" size={16} /> <span>Phase {currentData.step} 가이드</span></div>
                           <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">{currentData.title} <br /> <span className="block text-blue-600 text-[28px] md:text-4xl mt-3 whitespace-pre-wrap">{currentData.grammar}</span></h2>
@@ -1107,17 +1034,24 @@
                           </div>
                         </div>
 
-                        <div className="space-y-8 pt-16 border-t-4 border-slate-200">
+                        <div className="space-y-8 pt-16 border-t-4 border-slate-200 relative">
                           <div className="flex items-center justify-between mb-4">
                             <div className="space-y-1"><span className="text-amber-500 font-black text-[13px] uppercase tracking-widest">{activeStep + 1}단계 실전 미션</span><h2 className="text-4xl font-black text-slate-900 tracking-tight">연습 문제</h2></div>
-                            <div className="flex gap-2 flex-wrap justify-end">
+                            <div className="flex gap-2 flex-wrap justify-end relative z-30">
                               {currentData.exercises.map((_, idx) => (
-                                <button key={idx} onClick={() => { setExerciseIdx(idx); setUserQuery(''); setEngineResult(null); setShowTheoryAnswer(false); }} className={`px-4 py-2 mb-2 rounded-xl text-sm font-black transition-all ${exerciseIdx === idx ? 'bg-amber-500 text-white shadow-md' : 'bg-white border-2 border-slate-200 text-slate-400 hover:bg-amber-50'}`}>문제 {idx + 1}</button>
+                                <button key={idx} onClick={() => { setExerciseIdx(idx); setUserQuery(''); setEngineResult(null); }} className={`px-4 py-2 mb-2 rounded-xl text-sm font-black transition-all ${exerciseIdx === idx ? 'bg-amber-500 text-white shadow-md' : 'bg-white border-2 border-slate-200 text-slate-400 hover:bg-amber-50'} ${!isTheoryUnlocked(idx) ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!isTheoryUnlocked(idx)}>문제 {idx + 1}</button>
                               ))}
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
+                            {/* [잠금 장치 오버레이] */}
+                            {!isTheoryUnlocked(exerciseIdx) && (
+                                <div className="locked-overlay">
+                                    <span>🔒 이전 문제를 완료하면 열립니다</span>
+                                </div>
+                            )}
+                            
                             <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
                                 <div className="bg-amber-50 p-8 rounded-[2rem] border-2 border-amber-100 space-y-5 shadow-sm">
                                   <h5 className="text-xs font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Icon name="sparkles" size={18} /> Mission Goal</h5>
@@ -1145,19 +1079,17 @@
                                   </div>
                                 </div>
                                 
-                                {}
-                                {role === 'admin' && (
-                                  <div className="mt-6">
-                                    <button onClick={() => setShowTheoryAnswer(!showTheoryAnswer)} className="w-full flex items-center justify-between text-emerald-600 font-black text-[13px] uppercase bg-white hover:bg-emerald-50 px-5 py-4 rounded-2xl transition-all border-2 border-emerald-200 shadow-sm">
-                                      <span className="flex items-center gap-2"><Icon name="check-circle" size={18} /> 강사용 정답 열람</span>
-                                      <Icon name={showTheoryAnswer ? "chevron-up" : "chevron-down"} size={18} />
-                                    </button>
-                                    {showTheoryAnswer && (
-                                      <div className="mt-3 p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
-                                        <pre className="text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentData.exercises[exerciseIdx].answer}</code></pre>
-                                      </div>
-                                    )}
-                                  </div>
+                                {/* 정답 확인 영역 (강사는 항상 보임, 학생은 정답 맞췄을 때만 보임) */}
+                                {(userRole === 'admin' || (engineResult && engineResult.success) || solvedTheory.includes(`${activeStep}_${exerciseIdx}`)) && (
+                                    <div className="mt-6 p-5 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm">
+                                        <details className="group">
+                                            <summary className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 cursor-pointer list-none select-none hover:text-emerald-700 transition-colors">
+                                                <Icon name="check-circle" size={16} className="text-emerald-500 group-open:text-emerald-600 transition-colors" /> 
+                                                {userRole === 'admin' ? '▼ 강사용 정답 보기' : '▼ 모범 정답 확인하기'}
+                                            </summary>
+                                            <pre className="mt-4 text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentData.exercises[exerciseIdx].answer}</code></pre>
+                                        </details>
+                                    </div>
                                 )}
                             </div>
 
@@ -1165,7 +1097,18 @@
                                 <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-12 text-blue-300 relative shadow-inner">
                                   <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
                                     <span className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="code" size={16}/> BigQuery Simulator</span>
-                                    <button onClick={()=>{setEngineResult(bigQueryEngine(userQuery, currentData.exercises[exerciseIdx], currentData.exerciseData))}} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg">RUN QUERY <Icon name="play" size={14} fill="white" /></button>
+                                    <button onClick={()=>{
+                                        const res = bigQueryEngine(userQuery, currentData.exercises[exerciseIdx], currentData.exerciseData);
+                                        setEngineResult(res);
+                                        if (res.success) {
+                                            const key = `${activeStep}_${exerciseIdx}`;
+                                            if (!solvedTheory.includes(key)) {
+                                                const newSolved = [...solvedTheory, key];
+                                                setSolvedTheory(newSolved);
+                                                localStorage.setItem('sql_solved_theory', JSON.stringify(newSolved));
+                                            }
+                                        }
+                                    }} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg">RUN QUERY <Icon name="play" size={14} fill="white" /></button>
                                   </div>
                                   <textarea className="w-full bg-transparent border-none focus:ring-0 font-mono text-xl h-48 resize-none placeholder-slate-700 leading-relaxed" placeholder="이곳에 쿼리를 작성하세요..." value={userQuery} onChange={(e)=>setUserQuery(e.target.value)} spellCheck="false" />
                                   
@@ -1178,7 +1121,6 @@
                                           <p className={`font-medium ${engineResult.success ? 'text-slate-600' : 'text-rose-500'} whitespace-pre-wrap break-keep`}>{engineResult.error || "작성하신 쿼리가 성공적으로 실행되었습니다. 아래 결과를 확인하세요."}</p>
                                         </div>
                                       </div>
-                                      {/* [핵심 조치] 에러 시에도 표가 숨겨지지 않고 0 Rows 로 표시되도록 보장 */}
                                       {engineResult.data !== null && engineResult.data !== undefined && (
                                         <div className={`mt-6 pt-8 border-t ${engineResult.success ? 'border-emerald-200' : 'border-rose-200'}`}>
                                           <h5 className={`text-sm font-black uppercase mb-4 flex items-center gap-2 ${engineResult.success ? 'text-emerald-600' : 'text-rose-600'}`}><Icon name="table" size={16}/> 내가 작성한 쿼리의 실행 결과 (Result)</h5>
@@ -1207,7 +1149,7 @@
                                 <div className="flex justify-between items-center pt-2">
                                   <button onClick={() => alert(`힌트: ${currentData.exercises[exerciseIdx].hint}`)} className="text-slate-400 hover:text-blue-600 text-sm font-black flex items-center gap-2 transition-colors uppercase"><Icon name="help-circle" size={18}/> 힌트 보기</button>
                                   {engineResult && engineResult.success && (
-                                    <button onClick={() => { if(exerciseIdx < currentData.exercises.length - 1) setExerciseIdx(exerciseIdx + 1); else if(activeStep < STEPS_DATA.length - 1) { setActiveStep(activeStep + 1); setExerciseIdx(0); setShowTheoryAnswer(false); document.getElementById('mainContentScroll').scrollTop = 0; } setUserQuery(''); setEngineResult(null); }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 문제 <Icon name="chevron-right" size={24}/></button>
+                                    <button onClick={() => { if(exerciseIdx < currentData.exercises.length - 1) setExerciseIdx(exerciseIdx + 1); else if(activeStep < STEPS_DATA.length - 1) { setActiveStep(activeStep + 1); setExerciseIdx(0); document.getElementById('mainContentScroll').scrollTop = 0; } setUserQuery(''); setEngineResult(null); }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 문제 <Icon name="chevron-right" size={24}/></button>
                                   )}
                                 </div>
                             </div>
@@ -1218,14 +1160,13 @@
                   </React.Fragment>
                 )}
 
-                {}
                 {view === 'practical' && (
                   <React.Fragment>
                     <aside className="sidebar">
                       <div className="space-y-2 pb-10">
                         <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">Homework</h2>
                         {PRACTICAL_DATA.map((s, i) => (
-                          <button key={i} onClick={() => { setPracStep(i); setPracQuery(''); setPracResult(null); setShowPracAnswer(false); document.getElementById('pracContentScroll').scrollTop = 0; }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${pracStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'}`}>
+                          <button key={i} onClick={() => { setPracStep(i); setPracQuery(''); setPracResult(null); document.getElementById('pracContentScroll').scrollTop = 0; }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${pracStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'} ${!isPracUnlocked(i) ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!isPracUnlocked(i)}>
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-none ${pracStep === i ? 'bg-white/20' : 'bg-slate-100'}`}>H{i + 1}</div>
                             <div className="overflow-hidden leading-tight"><div className="text-[11px] font-black truncate">{s.title}</div><div className="text-[9px] font-bold opacity-70 uppercase mt-1 tracking-tighter">Business Logic</div></div>
                           </button>
@@ -1233,15 +1174,22 @@
                       </div>
                     </aside>
 
-                    <main className="content flex-1 overflow-y-auto p-6 lg:p-12 pb-40 bg-slate-50/50" id="pracContentScroll">
-                      <div className="max-w-6xl mx-auto space-y-16 animate-in fade-in duration-700 pb-20">
+                    <main className="content flex-1 overflow-y-auto p-6 lg:p-12 pb-40 bg-slate-50/50 relative" id="pracContentScroll">
+                      <div className="max-w-6xl mx-auto space-y-16 animate-in fade-in duration-700 pb-20 relative">
                         <div className="space-y-4">
                           <div className="inline-flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest bg-blue-50 px-4 py-2 rounded-full border border-blue-100"><Icon name="sparkles" size={14} /> <span>Practical Master Course</span></div>
                           <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">실무 적용 과제 (Homework)</h2>
                           <p className="text-xl text-slate-500 font-medium italic break-keep">비즈니스 상황에 대한 다중 테이블 결합 예제입니다.</p>
                         </div>
                         
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
+                           {/* [잠금 장치 오버레이] */}
+                           {!isPracUnlocked(pracStep) && (
+                               <div className="locked-overlay">
+                                   <span>🔒 이전 실무 과제를 완료하면 열립니다</span>
+                               </div>
+                           )}
+                           
                            <div className="lg:col-span-5 space-y-8 lg:sticky lg:top-8">
                                 <div className="bg-amber-50 p-8 rounded-3xl border-2 border-amber-100 space-y-5 shadow-sm">
                                   <h5 className="text-sm font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Icon name="sparkles" size={18} /> 비즈니스 시나리오</h5>
@@ -1269,19 +1217,17 @@
                                   </div>
                                 </div>
                                 
-                                {}
-                                {role === 'admin' && (
-                                  <div className="mt-6">
-                                    <button onClick={() => setShowPracAnswer(!showPracAnswer)} className="w-full flex items-center justify-between text-emerald-600 font-black text-[13px] uppercase bg-white hover:bg-emerald-50 px-5 py-4 rounded-2xl transition-all border-2 border-emerald-200 shadow-sm">
-                                      <span className="flex items-center gap-2"><Icon name="check-circle" size={18} /> 강사용 정답 열람</span>
-                                      <Icon name={showPracAnswer ? "chevron-up" : "chevron-down"} size={18} />
-                                    </button>
-                                    {showPracAnswer && (
-                                      <div className="mt-3 p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
-                                        <pre className="text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentPrac.answer}</code></pre>
-                                      </div>
-                                    )}
-                                  </div>
+                                {/* 실무 과제 정답 영역 */}
+                                {(userRole === 'admin' || (pracResult && pracResult.success) || solvedPrac.includes(pracStep)) && (
+                                    <div className="mt-6 p-5 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm">
+                                        <details className="group">
+                                            <summary className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 cursor-pointer list-none select-none hover:text-emerald-700 transition-colors">
+                                                <Icon name="check-circle" size={16} className="text-emerald-500 group-open:text-emerald-600 transition-colors" /> 
+                                                {userRole === 'admin' ? '▼ 강사용 정답 보기' : '▼ 모범 정답 확인하기'}
+                                            </summary>
+                                            <pre className="mt-4 text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentPrac.answer}</code></pre>
+                                        </details>
+                                    </div>
                                 )}
                            </div>
 
@@ -1289,7 +1235,17 @@
                               <div className="bg-slate-950 rounded-[2.5rem] p-10 lg:p-12 text-blue-300 relative shadow-inner">
                                 <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
                                     <span className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Icon name="code" size={16}/> BigQuery Simulator</span>
-                                    <button onClick={()=>{setPracResult(bigQueryEngine(pracQuery, currentPrac, PRAC_TABLE_DATA))}} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg">RUN QUERY <Icon name="play" size={14} fill="white" /></button>
+                                    <button onClick={()=>{
+                                        const res = bigQueryEngine(pracQuery, currentPrac, PRAC_TABLE_DATA);
+                                        setPracResult(res);
+                                        if (res.success) {
+                                            if (!solvedPrac.includes(pracStep)) {
+                                                const newSolved = [...solvedPrac, pracStep];
+                                                setSolvedPrac(newSolved);
+                                                localStorage.setItem('sql_solved_prac', JSON.stringify(newSolved));
+                                            }
+                                        }
+                                    }} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg">RUN QUERY <Icon name="play" size={14} fill="white" /></button>
                                 </div>
                                 <textarea className="w-full bg-transparent border-none focus:ring-0 font-mono text-xl h-48 resize-none placeholder-slate-700 leading-relaxed" placeholder="이곳에 쿼리를 작성하세요..." value={pracQuery} onChange={(e)=>setPracQuery(e.target.value)} spellCheck="false" />
                                 
@@ -1320,7 +1276,7 @@
                               <div className="flex justify-between items-center pt-2">
                                 <button onClick={() => alert(`힌트: ${currentPrac.hint}`)} className="text-slate-400 hover:text-blue-600 text-sm font-black flex items-center gap-2 transition-colors uppercase"><Icon name="help-circle" size={18}/> 힌트 보기</button>
                                 {pracResult && pracResult.success && (
-                                  <button onClick={() => { if(pracStep < PRACTICAL_DATA.length - 1) { setPracStep(pracStep + 1); setPracQuery(''); setPracResult(null); setShowPracAnswer(false); document.getElementById('pracContentScroll').scrollTop = 0; } }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 과제 <Icon name="chevron-right" size={24}/></button>
+                                  <button onClick={() => { if(pracStep < PRACTICAL_DATA.length - 1) { setPracStep(pracStep + 1); setPracQuery(''); setPracResult(null); document.getElementById('pracContentScroll').scrollTop = 0; } }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 과제 <Icon name="chevron-right" size={24}/></button>
                                 )}
                               </div>
                            </div>
