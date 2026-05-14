@@ -93,10 +93,15 @@
             title: "조건으로 거르기",
             grammar: "WHERE",
             subtitle: "원하는 데이터만 골라내는 필터링",
-            theory: "WHERE 절은 특정 조건에 맞는 행만 골라냅니다.\n\nAND를 사용해 여러 조건을 동시에 적용할 수 있습니다.\n\n[실무 팁: WHERE 1=1 AND]\n실무에서는 조건을 껐다 켜기 편하게 만들려고 `WHERE 1=1`을 먼저 적고, 그 아래에 `AND 조건`을 나열하는 방식을 자주 씁니다.\n\n이때 조건과 조건 사이는 콤마(,)가 아니라 반드시 `AND`나 `OR`로 연결해야 합니다.\n\n[사용 방법]\nSELECT \n  * \nFROM 테이블 \nWHERE 1=1 \n  AND 컬럼명 = '값' \n  AND 숫자컬럼 > 100\n;\n\n[다양한 필터 연산자]\n※ LIKE, IN, BETWEEN 등 다양한 필터 연산자를 활용할 수 있습니다.\n\n- LIKE: '서%' (서로 시작하는 문자열)\n\n- IN: ('서울', '경기') (목록 중 하나라도 포함)\n\n- BETWEEN A AND B: A와 B 사이 범위",
-            checkpoint: "데이터에 빈 값(NULL)이 포함된 경우 일반적인 비교(=)로는 잡히지 않습니다.\n반드시 'IS NULL' 또는 'IS NOT NULL'을 사용하세요.",
+            theory: "WHERE 절은 특정 조건에 맞는 행만 골라냅니다.\n\nAND를 사용해 여러 조건을 동시에 적용할 수 있습니다.\n\n[실무 팁: WHERE 1=1 AND]\n실무에서는 조건을 껐다 켜기 편하게 만들려고 `WHERE 1=1`을 먼저 적고, 그 아래에 `AND 조건`을 나열하는 방식을 자주 씁니다.\n\n이때 조건과 조건 사이는 콤마(,)가 아니라 반드시 `AND`나 `OR`로 연결해야 합니다.\n\n[사용 방법]\nSELECT \n  * \nFROM 테이블 \nWHERE 1=1 \n  AND 컬럼명 = '값' \n  AND 숫자컬럼 > 100\n;\n\n[다양한 필터 연산자]\n※ LIKE, IN, BETWEEN 등 다양한 필터 연산자를 활용할 수 있습니다.\n\n- LIKE: 특정 문자 패턴을 찾습니다. (예: WHERE city LIKE '서%')\n\n- IN: 여러 값 중 하나라도 일치하는지 찾습니다. (예: WHERE city IN ('서울', '경기'))\n\n- BETWEEN: A와 B 사이의 범위를 찾습니다. (예: WHERE age BETWEEN 20 AND 29)",
+            checkpoint: "1. 데이터에 빈 값(NULL)이 포함된 경우 일반적인 비교(=)로는 잡히지 않습니다.\n반드시 'IS NULL' 또는 'IS NOT NULL'을 사용하세요.\n\n2. [주의] 숫자에 따옴표를 씌워도('20') DB가 알아서 숫자로 바꿔 계산해주지만(암시적 형변환), 데이터가 많아지면 속도가 크게 느려집니다. 숫자는 따옴표 없이 적는 습관을 들이세요.",
             targetTable: "users",
-            exampleData: { "users": [{ cust_id: 1, city: '서울', age: 25 }] },
+            exampleData: { "users": [
+              { cust_id: 1, city: '서울', age: 25 },
+              { cust_id: 2, city: '부산', age: 32 },
+              { cust_id: 3, city: '인천', age: 19 },
+              { cust_id: 4, city: '서울', age: 15 }
+            ] },
             exerciseData: { "users": [
               { cust_id: 1, city: '서울', age: 25 }, 
               { cust_id: 2, city: '부산', age: 32 }, 
@@ -787,11 +792,11 @@
 
           const handleLogin = (e) => {
               e.preventDefault();
-              const val = loginInput.trim().toLowerCase();
-              if (val === 'admin' || val === 'amdin') {
+              const val = loginInput.trim();
+              if (val === 'shinhj6401') {
                   setRole('admin');
                   setLoginError('');
-              } else if (val === 'edu') {
+              } else if (val.toLowerCase() === 'edu') {
                   setRole('edu');
                   setLoginError('');
               } else {
