@@ -4,17 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SQL 마스터 : 이론편 - 데이터 분석의 기초</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- React & Babel -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    <!-- Alasql: 가상 SQL 엔진 -->
     <script src="https://cdn.jsdelivr.net/npm/alasql@4"></script>
-    <!-- Fonts -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -47,7 +42,6 @@
     </style>
 </head>
 <body class="text-slate-900">
-    <!-- 로그인 폼 -->
     <div id="loginOverlay">
         <div class="login-box">
             <h2>학습 시스템 입장</h2>
@@ -357,7 +351,12 @@
             theory: "WHERE 절은 특정 조건에 맞는 행만 골라냅니다.\n\nAND를 사용해 여러 조건을 동시에 적용할 수 있습니다.\n\n[실무 팁: WHERE 1=1 AND]\n실무에서는 조건을 껐다 켜기 편하게 만들려고 `WHERE 1=1`을 먼저 적고,\n그 아래에 `AND 조건`을 나열하는 방식을 자주 씁니다.\n\n이때 조건과 조건 사이는 콤마(,)가 아니라 반드시 `AND`나 `OR`로 연결해야 합니다.\n\n[사용 방법]\nSELECT \n  * \nFROM 테이블 \nWHERE 1=1 \n  AND 컬럼명 = '값' \n  AND 숫자컬럼 > 100\n;\n\n[다양한 필터 연산자]\n※ LIKE, IN, BETWEEN 등 다양한 필터 연산자를 활용할 수 있습니다.\n\n- LIKE: 특정 문자 패턴을 찾습니다. (예: WHERE city LIKE '서%')\n\n- IN: 여러 값 중 하나라도 일치하는지 찾습니다. (예: WHERE city IN ('서울', '경기'))\n\n- BETWEEN: A와 B 사이의 범위를 찾습니다. (예: WHERE age BETWEEN 20 AND 29)",
             checkpoint: "데이터에 빈 값(NULL)이 포함된 경우 일반적인 비교(=)로는 잡히지 않습니다.\n반드시 'IS NULL' 또는 'IS NOT NULL'을 사용하세요.",
             targetTable: "users",
-            exampleData: { "users": [{ cust_id: 1, city: '서울', age: 25 }] },
+            exampleData: { "users": [
+              { cust_id: 1, city: '서울', age: 25 },
+              { cust_id: 2, city: '부산', age: 32 },
+              { cust_id: 3, city: '인천', age: 19 },
+              { cust_id: 4, city: '서울', age: 15 }
+            ] },
             exerciseData: { "users": [
               { cust_id: 1, city: '서울', age: 25 }, 
               { cust_id: 2, city: '부산', age: 32 }, 
@@ -652,7 +651,7 @@
             exercises: [
               { id: 1, goal: "[상황: 단순 순번 부여]\n전체 접속 로그(login_log)를 조회하면서, 별도의 기준 없이 단순히 1번부터 번호(rn)를 매겨 보세요.\n\n(※ 가상 엔진 특성상 새롭게 연산된 rn 컬럼이 결과 표의 첫 번째 열로 출력될 수 있으나 정상입니다.)", target: "전체 컬럼(*), rn", answer: "SELECT *, ROW_NUMBER() OVER() AS rn FROM login_log;", res: [{cust_id:'A', time:'10:00', device:'PC', rn:1},{cust_id:'A', time:'12:00', device:'Mobile', rn:2},{cust_id:'B', time:'11:00', device:'PC', rn:3},{cust_id:'B', time:'13:00', device:'Mobile', rn:4}], hint: "ROW_NUMBER() OVER() AS rn" },
               { id: 2, goal: "[상황: 최신 접속 로그 추출]\n보안팀에서 유저별로 가장 마지막(최근)에 접속한 단 1건의 로그(*)만 필요하다고 합니다.\n서브쿼리를 사용해 추출하세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time DESC) AS rn FROM login_log) WHERE rn = 1;", res: [{rn:1, cust_id:'A', time:'12:00', device:'Mobile'},{rn:1, cust_id:'B', time:'13:00', device:'Mobile'}], hint: "FROM 절 서브쿼리로 먼저 rn을 만든 후 WHERE rn = 1 조건을 줍니다." },
-              { id: 3, goal: "[상황: 최초 접속 로그 추출]\n마케팅팀에서 유저별 가장 첫(오래된) 접속 로그(*)를 분석하여 유입 채널을 보려 합니다.\n순번을 오름차순(ASC)으로 매겨 1번을 찾으세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time ASC) AS rn FROM login_log) WHERE rn = 1;", res: [{rn:1, cust_id:'A', time:'10:00', device:'PC'},{rn:1, cust_id:'B', time:'11:00', device:'PC'}], hint: "ORDER BY time ASC 를 사용하세요." }
+              { id: 3, goal: "[상황: 최초 접속 로그 추출]\n마케팅팀에서 유저별 가장 첫(오래된) 접속 로그(*)를 분석하여 유입 채널을 보려 합니다.\n순번을 오름차순(ASC)으로 매겨 1번을 찾으세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY cust_id ORDER BY time ASC) AS rn FROM login_log) WHERE rn = 1;", res: [{rn:1, cust_id:'A', time:'10:00', device:'PC', rn:1},{rn:1, cust_id:'B', time:'11:00', device:'PC', rn:1}], hint: "ORDER BY time ASC 를 사용하세요." }
             ]
           },
           {
@@ -736,227 +735,251 @@
 
         // --- 빅쿼리 시뮬레이터 실시간 검증 엔진 ---
         const bigQueryEngine = (input, currentEx, sourceDataObj) => {
+          if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
+          if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
+
+          const lowerInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
+          const lowerAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
+          const goalText = currentEx.goal || currentEx.scenario || '';
+
+          // 초강력 공백 제거 로직 (AS 키워드 무시 추가)
+          const cleanStr = (str) => str.replace(/\s+/g, ' ')
+                                       .replace(/\bas\b/gi, '')
+                                       .replace(/\s+/g, '')
+                                       .replace(/1=1and/gi, '')
+                                       .replace(/1=1/gi, '')
+                                       .replace(/;/g, '')
+                                       .toLowerCase();
+
+          const normalizedInput = cleanStr(input);
+          const normalizedAnswer = cleanStr(currentEx.answer);
+
+          let executedData = null;
+          let executionError = null;
+          let isDataCorrect = false;
+          let showSuccessMessageInsteadOfData = false;
+          
+          // 텍스트 완전 일치
+          const isStringCorrect = normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '').trim() || normalizedInput + ';' === normalizedAnswer;
+          
           try {
-              if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
-              if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
+              const alasql = window.alasql;
+              if (!alasql) throw new Error("SQL 엔진 로딩 중입니다.");
 
-              // 초강력 공백 제거 로직
-              const cleanStr = (str) => str.replace(/\s+/g, '').replace(/1=1and/gi, '').replace(/1=1/gi, '').replace(/;/g, '').toLowerCase();
+              let sqlForAlasql = input.trim()
+                  .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
+                  .replace(/INT64/gi, 'INT');
+                  
+              if (sqlForAlasql.toUpperCase().includes('QUALIFY')) {
+                  throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 직접 렌더링을 지원하지 않습니다. 서브쿼리를 이용해 주세요.");
+              }
 
-              const normalizedInput = cleanStr(input);
-              const normalizedAnswer = cleanStr(currentEx.answer);
+              const createTableMatch = sqlForAlasql.match(/CREATE\s+OR\s+REPLACE\s+TABLE\s+([a-zA-Z0-9_`]+)\s+AS/i);
+              if (createTableMatch) {
+                  showSuccessMessageInsteadOfData = true;
+                  sqlForAlasql = sqlForAlasql.replace(/CREATE\s+OR\s+REPLACE\s+TABLE\s+[a-zA-Z0-9_`]+\s+AS/i, '');
+              }
 
-              let executedData = null;
-              let executionError = null;
-              let isDataCorrect = false;
-              let showSuccessMessageInsteadOfData = false;
+              sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
+
+              // [스마트 대소문자 교정기] 사용자가 소문자로 입력해도 정답 처리되도록 자동 보정
+              const literalMap = {
+                  'active': 'Active', 'churned': 'Churned',
+                  'vip': 'VIP', 'gold': 'Gold', 'silver': 'Silver', 'bronze': 'Bronze',
+                  'pc': 'PC', 'mobile': 'Mobile', 'tablet': 'Tablet',
+                  'food': 'Food', 'tech': 'Tech'
+              };
+              Object.keys(literalMap).forEach(key => {
+                  const regex = new RegExp(`['"]${key}['"]`, 'gi');
+                  sqlForAlasql = sqlForAlasql.replace(regex, `'${literalMap[key]}'`);
+              });
               
-              // 텍스트 완전 일치
-              const isStringCorrect = normalizedInput === normalizedAnswer;
-              
-              try {
-                  const alasql = window.alasql;
-                  if (!alasql) throw new Error("SQL 엔진 로딩 중입니다.");
+              // [테이블명 대소문자 무시 교정기] 추가
+              Object.keys(sourceDataObj).forEach(tbl => {
+                  const regex = new RegExp(`\\b${tbl}\\b`, 'gi');
+                  sqlForAlasql = sqlForAlasql.replace(regex, tbl.toLowerCase());
+              });
 
-                  let sqlForAlasql = input.trim()
-                      .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
-                      .replace(/INT64/gi, 'INT');
+              const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
+              let selectItems = [];
+              if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
+                  selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
+                  
+                  sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
+                      const upToMatch = string.substring(0, offset);
+                      const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
                       
-                  if (sqlForAlasql.toUpperCase().includes('QUALIFY')) {
-                      throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 직접 렌더링을 지원하지 않습니다. 서브쿼리를 이용해 주세요.");
-                  }
-
-                  const createTableMatch = sqlForAlasql.match(/CREATE\s+OR\s+REPLACE\s+TABLE\s+([a-zA-Z0-9_`]+)\s+AS/i);
-                  if (createTableMatch) {
-                      showSuccessMessageInsteadOfData = true;
-                      sqlForAlasql = sqlForAlasql.replace(/CREATE\s+OR\s+REPLACE\s+TABLE\s+[a-zA-Z0-9_`]+\s+AS/i, '');
-                  }
-
-                  sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
-
-                  const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
-                  let selectItems = [];
-                  if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
-                      selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
-                      
-                      sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+)(\s+HAVING|\s+ORDER\s+BY|\s+LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
-                          const upToMatch = string.substring(0, offset);
-                          const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
+                      if (selectMatches.length > 0) {
+                          const lastSelect = selectMatches[selectMatches.length - 1][1];
+                          const localSelectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
+                          const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
                           
-                          if (selectMatches.length > 0) {
-                              const lastSelect = selectMatches[selectMatches.length - 1][1];
-                              const selectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
-                              const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
-                              
-                              const cols = indices.map(idx => {
-                                  if (!isNaN(idx) && idx > 0 && idx <= selectItems.length) {
-                                      let item = selectItems[idx - 1];
-                                      if (!item) return String(idx);
-                                      let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
-                                      if (aliasMatch) return aliasMatch[1].trim();
-                                      return item.trim();
-                                  }
-                                  return String(idx);
-                              });
-                              return `GROUP BY ${cols.join(', ')}${rest}`;
-                          }
-                          return match;
-                      });
-                  }
-            
-                  Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
-                      alasql(`DROP TABLE IF EXISTS ${tbl}`);
-                      alasql(`CREATE TABLE ${tbl}`);
-                      if (!alasql.tables[tbl]) {
-                          alasql.tables[tbl] = { data: [] };
+                          const cols = indices.map(idx => {
+                              if (!isNaN(idx) && idx > 0 && idx <= localSelectItems.length) {
+                                  let item = localSelectItems[idx - 1];
+                                  if (!item) return String(idx);
+                                  let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_]+)$/is) || item.match(/\s+([a-zA-Z0-9_]+)$/is);
+                                  if (aliasMatch) return aliasMatch[1].trim();
+                                  return item.trim();
+                              }
+                              return String(idx);
+                          });
+                          return `GROUP BY ${cols.join(', ')}${rest}`;
                       }
-                      alasql.tables[tbl].data = JSON.parse(JSON.stringify(rows));
+                      return match;
                   });
-                  
-                  executedData = alasql(sqlForAlasql);
-                  
-                  if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
-                      if (normalizedAnswer.includes('createorreplicatable') && !normalizedInput.includes('createorreplicatable')) {
-                          isDataCorrect = false;
-                          executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
-                      } else {
-                          const isOrderRequired = currentEx.goal && (currentEx.goal.includes('정렬') || normalizedAnswer.includes('orderby') || normalizedAnswer.includes('limit'));
-                          const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
+              }
+        
+              Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
+                  const lowerTbl = tbl.toLowerCase();
+                  alasql(`DROP TABLE IF EXISTS ${lowerTbl}`);
+                  alasql(`CREATE TABLE ${lowerTbl}`);
+                  if (!alasql.tables[lowerTbl]) {
+                      alasql.tables[lowerTbl] = { data: [] };
+                  }
+                  alasql.tables[lowerTbl].data = JSON.parse(JSON.stringify(rows));
+              });
+              
+              executedData = alasql(sqlForAlasql);
+              
+              if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
+                  if (normalizedAnswer.includes('createorreplicatable') && !normalizedInput.includes('createorreplicatable')) {
+                      isDataCorrect = false;
+                      executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
+                  } else {
+                      const isOrderRequired = goalText.includes('정렬') || lowerAnswer.includes('order by') || lowerAnswer.includes('limit');
+                      const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
 
-                          const normalizeValuesOnly = (data, sortRows) => {
+                      const normalizeValuesOnly = (data, sortRows) => {
+                          const mappedData = data.map(row => {
+                              const vals = Object.values(row).map(v => v !== null && v !== undefined ? String(v) : 'NULL');
+                              return JSON.stringify(vals);
+                          });
+                          return sortRows ? mappedData.sort() : mappedData;
+                      };
+                      
+                      const userValMatrix = normalizeValuesOnly(executedData, !isOrderRequired);
+                      const expValMatrix = normalizeValuesOnly(currentEx.res, !isOrderRequired);
+                      
+                      if (JSON.stringify(userValMatrix) === JSON.stringify(expValMatrix)) {
+                          isDataCorrect = true;
+                      }
+
+                      if (!isDataCorrect) {
+                          const normalize = (data, sortRows) => {
                               const mappedData = data.map(row => {
-                                  const vals = Object.values(row).map(v => v !== null && v !== undefined ? String(v) : 'NULL');
-                                  return JSON.stringify(vals);
+                                  const newRow = {};
+                                  Object.keys(row).forEach(key => {
+                                      const cleanKey = key.includes('.') ? key.split('.')[1] : key;
+                                      const lowerKey = cleanKey.toLowerCase();
+                                      
+                                      if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
+                                          return; 
+                                      }
+                                      newRow[lowerKey] = row[key];
+                                  });
+                                  
+                                  expectedKeys.forEach(ek => {
+                                      if (!(ek in newRow)) {
+                                          newRow[ek] = null;
+                                      }
+                                  });
+                                  
+                                  return JSON.stringify(Object.entries(newRow).sort());
                               });
                               return sortRows ? mappedData.sort() : mappedData;
                           };
                           
-                          const userValMatrix = normalizeValuesOnly(executedData, !isOrderRequired);
-                          const expValMatrix = normalizeValuesOnly(currentEx.res, !isOrderRequired);
+                          const userResult = normalize(executedData, !isOrderRequired);
+                          const expectedResult = normalize(currentEx.res, !isOrderRequired);
                           
-                          if (JSON.stringify(userValMatrix) === JSON.stringify(expValMatrix)) {
+                          if (JSON.stringify(userResult) === JSON.stringify(expectedResult)) {
                               isDataCorrect = true;
                           }
-
-                          if (!isDataCorrect) {
-                              const normalize = (data, sortRows) => {
-                                  const mappedData = data.map(row => {
-                                      const newRow = {};
-                                      Object.keys(row).forEach(key => {
-                                          const cleanKey = key.includes('.') ? key.split('.')[1] : key;
-                                          const lowerKey = cleanKey.toLowerCase();
-                                          
-                                          if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) {
-                                              return; 
-                                          }
-                                          newRow[lowerKey] = row[key];
-                                      });
-                                      
-                                      expectedKeys.forEach(ek => {
-                                          if (!(ek in newRow)) {
-                                              newRow[ek] = null;
-                                          }
-                                      });
-                                      
-                                      return JSON.stringify(Object.entries(newRow).sort());
-                                  });
-                                  return sortRows ? mappedData.sort() : mappedData;
-                              };
-                              
-                              const userResult = normalize(executedData, !isOrderRequired);
-                              const expectedResult = normalize(currentEx.res, !isOrderRequired);
-                              
-                              if (JSON.stringify(userResult) === JSON.stringify(expectedResult)) {
-                                  isDataCorrect = true;
-                              }
-                          }
-                          
-                          if (!isDataCorrect && executedData.length === 1 && Object.keys(executedData[0]).length === 1 && Object.keys(currentEx.res[0]).length === 1) {
-                              const userVal = Object.values(executedData[0])[0];
-                              const expVal = Object.values(currentEx.res[0])[0];
-                              if (String(userVal) === String(expVal)) {
-                                  isDataCorrect = true;
-                              }
+                      }
+                      
+                      if (!isDataCorrect && executedData.length === 1 && Object.keys(executedData[0]).length === 1 && Object.keys(currentEx.res[0]).length === 1) {
+                          const userVal = Object.values(executedData[0])[0];
+                          const expVal = Object.values(currentEx.res[0])[0];
+                          if (String(userVal) === String(expVal)) {
+                              isDataCorrect = true;
                           }
                       }
                   }
-              } catch (err) {
-                  executionError = "실행 오류: " + err.message;
-                  
-                  if (normalizedInput.includes('where') && err.message.toLowerCase().includes('parseerror')) {
-                      executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다.";
-                  }
-                  if (normalizedInput.includes('count(distinct(')) {
-                      executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면 구문 오류가 발생합니다. 괄호 없이 작성해 보세요.";
-                  }
               }
-
-              let finalData = executedData;
-              if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
-                  finalData = []; 
-                  if (executionError) {
-                      executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
-                  }
+          } catch (err) {
+              executionError = "실행 오류: " + err.message;
+              
+              if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parseerror')) {
+                  executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다.";
               }
-
-              if (currentEx.goal && currentEx.goal.includes('비정상 결제 탐지')) {
-                  if (normalizedInput.includes('nameisnull') && !/[a-z0-9_`]+\.nameisnull/i.test(normalizedInput)) {
-                      return {
-                          success: false,
-                          data: finalData,
-                          error: "💡 [분석가 팁] 소속 테이블 누락: 실무 JOIN에서는 반드시 'b.name IS NULL'처럼 테이블 별칭을 명시해야 합니다."
-                      };
-                  }
+              if (normalizedInput.includes('count(distinct(')) {
+                  executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면 구문 오류가 발생합니다. 괄호 없이 작성해 보세요.";
               }
+          }
 
-              const rules = [
-                  { keyword: 'groupby', condition: normalizedAnswer.includes('groupby'), error: "문법 오류 (그룹화 필요): 집계 함수와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용해야 합니다." },
-                  { keyword: 'orderby', condition: (currentEx.goal && currentEx.goal.includes('정렬')) || normalizedAnswer.includes('orderby'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
-                  { keyword: 'with', condition: /\bwith\b/.test(normalizedAnswer), boundary: true, error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
-                  { keyword: 'select', condition: normalizedAnswer.includes('select') && currentEx.goal && currentEx.goal.includes('서브쿼리'), error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요." },
-                  { keyword: 'row_number', condition: normalizedAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
-                  { keyword: 'concat', condition: normalizedAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
-                  { keyword: 'substr', condition: normalizedAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
-                  { keyword: 'distinct', condition: normalizedAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
-              ];
-
-              for (const rule of rules) {
-                  if (rule.condition) {
-                      let hasKeyword = rule.boundary ? new RegExp(`\\b${rule.keyword}\\b`).test(normalizedInput) : normalizedInput.includes(rule.keyword);
-                      if (!hasKeyword) {
-                          return { success: false, data: finalData, error: rule.error }; 
-                      }
-                  }
+          let finalData = executedData;
+          if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
+              finalData = []; 
+              if (executionError) {
+                  executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
               }
+          }
 
-              if (/\bas['"][^'"]+['"]/i.test(normalizedInput)) {
+          if (goalText.includes('비정상 결제 탐지')) {
+              if (normalizedInput.includes('nameisnull') && !/[a-z0-9_`]+\.nameisnull/i.test(normalizedInput)) {
                   return {
                       success: false,
                       data: finalData,
-                      error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
+                      error: "💡 [분석가 팁] 소속 테이블 누락: 실무 JOIN에서는 반드시 'b.name IS NULL'처럼 테이블 별칭을 명시해야 합니다."
                   };
               }
-              
-              if (isDataCorrect || isStringCorrect) {
-                let displayData = isDataCorrect ? finalData : currentEx.res; 
-                if (showSuccessMessageInsteadOfData) {
-                    displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
-                }
-                return { success: true, data: displayData };
-              } else {
-                return { 
-                    success: false, 
-                    data: finalData, 
-                    error: executionError || "오답입니다. 추출해야 할 컬럼명과 필터, 그리고 문제의 의도(정렬, 생성 등)를 확인하세요." 
-                };
-              }
+          }
 
-          } catch (criticalErr) {
-              return { 
-                  success: false, 
-                  data: [], 
-                  error: `치명적 시스템 오류가 발생했습니다: ${criticalErr.message}\n(작성하신 쿼리가 너무 복잡하거나 엔진이 지원하지 않는 문법일 수 있습니다.)` 
+          // [규칙 검증 로직 통합]
+          const rules = [
+              { keyword: 'group by', condition: lowerAnswer.includes('group by'), error: "문법 오류 (그룹화 필요): 집계 함수와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용해야 합니다." },
+              { keyword: 'order by', condition: goalText.includes('정렬') || lowerAnswer.includes('order by') || lowerAnswer.includes('limit'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
+              { keyword: 'with ', condition: lowerAnswer.includes('with '), error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
+              { keyword: '(select', condition: lowerAnswer.includes('(select') && goalText.includes('서브쿼리'), error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요.", alt: '( select' },
+              { keyword: 'row_number', condition: lowerAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
+              { keyword: 'concat', condition: lowerAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
+              { keyword: 'substr', condition: lowerAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
+              { keyword: 'distinct', condition: lowerAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." }
+          ];
+
+          for (const rule of rules) {
+              if (rule.condition) {
+                  let hasKeyword = lowerInput.includes(rule.keyword);
+                  if (rule.alt && !hasKeyword) {
+                      hasKeyword = lowerInput.includes(rule.alt);
+                  }
+                  if (!hasKeyword) {
+                      return { success: false, data: finalData, error: rule.error }; 
+                  }
+              }
+          }
+
+          if (/\bas\s+['"][^'"]+['"]/i.test(input)) {
+              return {
+                  success: false,
+                  data: finalData,
+                  error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 백틱(`)을 쓰거나 기호 없이 작성해야 합니다."
               };
+          }
+          
+          if (isDataCorrect || isStringCorrect) {
+            let displayData = isDataCorrect ? finalData : currentEx.res; 
+            if (showSuccessMessageInsteadOfData) {
+                displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
+            }
+            return { success: true, data: displayData };
+          } else {
+            return { 
+                success: false, 
+                data: finalData, 
+                error: executionError || "오답입니다. 추출해야 할 컬럼명과 필터, 그리고 문제의 의도(정렬, 생성 등)를 확인하세요." 
+            };
           }
         };
 
@@ -1066,6 +1089,9 @@
           const [userRole, setUserRole] = useState(null);
           const [solvedTheory, setSolvedTheory] = useState([]);
           const [solvedPrac, setSolvedPrac] = useState([]);
+          
+          const [showTheoryAnswer, setShowTheoryAnswer] = useState(false);
+          const [showPracAnswer, setShowPracAnswer] = useState(false);
 
           const getHeaders = (data) => {
               if (!Array.isArray(data) || data.length === 0) return [];
@@ -1180,7 +1206,7 @@
                       <div className="space-y-2 pb-10">
                         <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">11-Step 로드맵</h2>
                         {STEPS_DATA.map((s, i) => (
-                          <button key={i} onClick={() => { setActiveStep(i); setExerciseIdx(0); setUserQuery(''); setEngineResult(null); setTimeout(() => { const el = document.getElementById('mainContentScroll'); if(el) el.scrollTop = 0; }, 0); }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${activeStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'}`}>
+                          <button key={i} onClick={() => { setActiveStep(i); setExerciseIdx(0); setUserQuery(''); setEngineResult(null); setShowTheoryAnswer(false); setTimeout(() => { const el = document.getElementById('mainContentScroll'); if(el) el.scrollTop = 0; }, 0); }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${activeStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'}`}>
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-none ${activeStep === i ? 'bg-white/20' : 'bg-slate-100'}`}>{i + 1}</div>
                             <div className="overflow-hidden leading-tight"><div className="text-[11px] font-black truncate">{s.title}</div><div className="text-[9px] font-bold opacity-70 mt-1 uppercase whitespace-pre-wrap leading-tight">{s.grammar}</div></div>
                           </button>
@@ -1235,7 +1261,7 @@
                             <div className="space-y-1"><span className="text-amber-500 font-black text-[13px] uppercase tracking-widest">{activeStep + 1}단계 실전 미션</span><h2 className="text-4xl font-black text-slate-900 tracking-tight">연습 문제</h2></div>
                             <div className="flex gap-2 flex-wrap justify-end relative z-30">
                               {currentData.exercises.map((_, idx) => (
-                                <button key={idx} onClick={() => { setExerciseIdx(idx); setUserQuery(''); setEngineResult(null); }} className={`px-4 py-2 mb-2 rounded-xl text-sm font-black transition-all ${exerciseIdx === idx ? 'bg-amber-500 text-white shadow-md' : 'bg-white border-2 border-slate-200 text-slate-400 hover:bg-amber-50'} ${!isTheoryUnlocked(idx) ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!isTheoryUnlocked(idx)}>문제 {idx + 1}</button>
+                                <button key={idx} onClick={() => { setExerciseIdx(idx); setUserQuery(''); setEngineResult(null); setShowTheoryAnswer(false); }} className={`px-4 py-2 mb-2 rounded-xl text-sm font-black transition-all ${exerciseIdx === idx ? 'bg-amber-500 text-white shadow-md' : 'bg-white border-2 border-slate-200 text-slate-400 hover:bg-amber-50'} ${!isTheoryUnlocked(idx) ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!isTheoryUnlocked(idx)}>문제 {idx + 1}</button>
                               ))}
                             </div>
                           </div>
@@ -1278,12 +1304,14 @@
                                 {/* 정답 확인 영역 (강사는 항상 보임, 학생은 정답 맞췄을 때만 보임) */}
                                 {(userRole === 'admin' || (engineResult && engineResult.success) || solvedTheory.includes(`${activeStep}_${exerciseIdx}`)) && (
                                     <div className="mt-6 p-5 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm">
-                                        <details className="group">
-                                            <summary className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 cursor-pointer list-none select-none hover:text-emerald-700 transition-colors">
+                                        <details className="group" open={showTheoryAnswer}>
+                                            <summary onClick={(e) => { e.preventDefault(); setShowTheoryAnswer(!showTheoryAnswer); }} className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 cursor-pointer list-none select-none hover:text-emerald-700 transition-colors">
                                                 <Icon name="check-circle" size={16} className="text-emerald-500 group-open:text-emerald-600 transition-colors" /> 
                                                 {userRole === 'admin' ? '▼ 강사용 정답 보기' : '▼ 모범 정답 확인하기'}
                                             </summary>
-                                            <pre className="mt-4 text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentData.exercises[exerciseIdx].answer}</code></pre>
+                                            {showTheoryAnswer && (
+                                                <pre className="mt-4 text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentData.exercises[exerciseIdx].answer}</code></pre>
+                                            )}
                                         </details>
                                     </div>
                                 )}
@@ -1417,12 +1445,14 @@
                                 {/* 정답 확인 영역 (강사는 항상 보임, 학생은 정답 맞췄을 때만 보임) */}
                                 {(userRole === 'admin' || (pracResult && pracResult.success) || solvedPrac.includes(pracStep)) && (
                                     <div className="mt-6 p-5 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm">
-                                        <details className="group">
-                                            <summary className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 cursor-pointer list-none select-none hover:text-emerald-700 transition-colors">
+                                        <details className="group" open={showPracAnswer}>
+                                            <summary onClick={(e) => { e.preventDefault(); setShowPracAnswer(!showPracAnswer); }} className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 cursor-pointer list-none select-none hover:text-emerald-700 transition-colors">
                                                 <Icon name="check-circle" size={16} className="text-emerald-500 group-open:text-emerald-600 transition-colors" /> 
                                                 {userRole === 'admin' ? '▼ 강사용 정답 보기' : '▼ 모범 정답 확인하기'}
                                             </summary>
-                                            <pre className="mt-4 text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentPrac.answer}</code></pre>
+                                            {showPracAnswer && (
+                                                <pre className="mt-4 text-sm font-mono text-slate-800 whitespace-pre-wrap bg-white p-4 rounded-xl border border-emerald-100 shadow-inner"><code>{currentPrac.answer}</code></pre>
+                                            )}
                                         </details>
                                     </div>
                                 )}
