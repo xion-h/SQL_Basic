@@ -1044,11 +1044,11 @@
             },
             {
                 id: 2, title: "실무 2. 신규/이탈 고객 타겟팅",
-                scenario: "[운영팀] 가입일(join_date)이 '2026년 3월 1일' 이후(>= 20260301)인 유저 중, 이미 해지(Churned)한 고객의 정보가 필요합니다.\n조회 결과에 30대 이상이면 '시니어', 미만이면 '주니어'라는 등급(age_group)을 생성하여 이름, 도시와 함께 추출하세요.",
+                scenario: "[운영팀] 가입일(join_date)이 '2025년 1월 1일' 이후(>= 20250101)인 유저 중, 이미 해지(Churned)한 고객의 정보가 필요합니다.\n조회 결과에 30대 이상이면 '시니어', 미만이면 '주니어'라는 등급(age_group)을 생성하여 이름, 도시와 함께 추출하세요.",
                 target: "name, city, age_group",
-                answer: "SELECT c.name, c.city, CASE WHEN c.age >= 30 THEN '시니어' ELSE '주니어' END AS age_group FROM customers c JOIN subscriptions s ON c.cust_id = s.cust_id WHERE c.join_date >= 20260301 AND s.status = 'Churned';",
-                res: [{name: '정다은', city: '인천', age_group: '시니어'}],
-                hint: "join_date 조건과 status 조건을 AND로 묶고, CASE WHEN을 사용해 age_group을 생성하세요."
+                answer: "SELECT c.name, c.city, CASE WHEN c.age >= 30 THEN '시니어' ELSE '주니어' END AS age_group FROM customers c JOIN subscriptions s ON c.cust_id = s.cust_id WHERE c.join_date >= 20250101 AND s.status = 'Churned';",
+                res: [{name: '박민수', city: '서울', age_group: '시니어'}, {name: '정다은', city: '인천', age_group: '시니어'}],
+                hint: "join_date 조건(>= 20250101)과 status 조건을 AND로 묶고, CASE WHEN을 사용해 age_group을 생성하세요."
             },
             {
                 id: 3, title: "실무 3. 요금제별 예상 월 매출(MRR)",
