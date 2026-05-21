@@ -120,12 +120,15 @@
               );
             }
             let textContent = part;
+            // 뱃지 다음의 텍스트는 선행 줄바꿈 제거 (뱃지 margin으로 여백 조절)
             if (index > 0 && parts[index - 1].startsWith('[')) {
               textContent = textContent.replace(/^\n+/, '');
             }
+            // 뱃지 이전의 텍스트는 후행 줄바꿈 제거 (뱃지 margin으로 여백 조절)
             if (index < parts.length - 1 && parts[index + 1].startsWith('[')) {
               textContent = textContent.replace(/\n+$/, '');
             }
+            // 텍스트 내에 포함된 HTML 태그(table 등)를 안전하게 렌더링
             return <div key={index} className="whitespace-pre-wrap text-slate-700 leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: textContent }} />;
           });
         };
@@ -177,6 +180,7 @@
               }
           }
 
+          // 초강력 공백 제거 로직
           const cleanStrForLiteral = (str) => {
               let cleaned = str.replace(/\b[a-z_`][a-z0-9_`]*\./gi, '');
               cleaned = cleaned.replace(/\s+/g, ' ').replace(/\bas\b/gi, '');
@@ -202,6 +206,7 @@
           let isDataCorrect = false;
           let showSuccessMessageInsteadOfData = false;
           
+          // 텍스트 완전 일치 (리터럴 텍스트 대소문자까지 모두 일치할 경우에만 우회 통과 허용)
           let isStringCorrect = false;
           if (normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '').trim() || normalizedInput + ';' === normalizedAnswer) {
               const getLiterals = (str) => {
@@ -223,6 +228,7 @@
                   .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
                   .replace(/INT64/gi, 'INT');
 
+              // 💡 가상 엔진(Alasql) 윈도우 함수 버그 우회
               sqlForAlasql = sqlForAlasql.replace(/OVER\s*\(([^)]+)\)/gi, (match, inner) => {
                   return `OVER(${inner.replace(/[a-zA-Z0-9_`]+\./g, '')})`;
               });
@@ -256,7 +262,10 @@
               });
 
               const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
+              let selectItems = [];
               if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
+                  selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
+                  
                   sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+?)(\s*HAVING|\s*ORDER\s+BY|\s*LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
                       const upToMatch = string.substring(0, offset);
                       const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
@@ -364,6 +373,15 @@
                               isDataCorrect = true;
                           }
                       }
+                      
+                      // 스칼라 값 강제 비교
+                      if (!isDataCorrect && executedData.length === 1 && Object.keys(executedData[0]).length === 1 && Object.keys(currentEx.res[0]).length === 1) {
+                          const userVal = Object.values(executedData[0])[0];
+                          const expVal = Object.values(currentEx.res[0])[0];
+                          if (String(userVal) === String(expVal)) {
+                              isDataCorrect = true;
+                          }
+                      }
                   }
               }
           } catch (err) {
@@ -373,6 +391,9 @@
               }
               if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parseerror')) {
                   executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다.";
+              }
+              if (normalizedInput.includes('count(distinct(')) {
+                  executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면 구문 오류가 발생합니다. 괄호 없이 작성해 보세요.";
               }
           }
 
@@ -427,7 +448,7 @@
           }
           
           if (isDataCorrect || isStringCorrect) {
-            let displayData = isDataCorrect && finalData.length > 0 ? finalData : currentEx.res; 
+            let displayData = isDataCorrect ? finalData : currentEx.res; 
             if (showSuccessMessageInsteadOfData) {
                 displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
             }
@@ -441,7 +462,7 @@
           }
         };
 
-        // --- 구조 (Structure) 데이터 ---
+        // --- 통합된 STRUCTURE_CONTENT ---
         const STRUCTURE_CONTENT = [
             {
                 id: "term_match",
@@ -625,6 +646,7 @@
             }
         ];
 
+        // --- 통합된 단일 STEPS_DATA ---
         const STEPS_DATA = [
           {
             step: 1,
@@ -708,11 +730,11 @@
             exercises: [
               { id: 1, goal: "[상황: 총 매출 파악]\n재무팀에 보고하기 위해\n지금까지 발생한 전체 매출액(amt)의 총합을 구하세요.", target: "SUM(amt)", answer: "SELECT SUM(amt) FROM sales;", res: [{'sum(amt)':38000}], hint: "SUM(amt) 함수를 사용하세요." },
               { id: 2, goal: "[상황: 카테고리 종류 확인]\n현재 우리 마트에서 판매가 발생한 과일의 종류가 몇 개인지 확인하려 합니다.\ncategory 컬럼을 중복 없이 고유한 값만 추출하세요.", target: "category (고유값)", answer: "SELECT DISTINCT category FROM sales;", res: [{category:'수박'},{category:'딸기'},{category:'포도'}], hint: "SELECT DISTINCT category 를 사용하세요." },
-              { id: 3, goal: "[상황: 고액 결제 건수 세기]\n매출액(amt)이 1000 이상 발생한 VIP 결제가\n총 몇 건(행 개수)인지 세어보세요.", target: "COUNT(*)", answer: "SELECT COUNT(*) FROM sales WHERE amt >= 10000;", res: [{'count(*)':2}], hint: "WHERE amt >= 10000 조건을 추가하세요." },
+              { id: 3, goal: "[상황: 고액 결제 건수 세기]\n매출액(amt)이 10000 이상 발생한 VIP 결제가\n총 몇 건(행 개수)인지 세어보세요.", target: "COUNT(*)", answer: "SELECT COUNT(*) FROM sales WHERE amt >= 10000;", res: [{'count(*)':2}], hint: "WHERE amt >= 10000 조건을 추가하세요." },
               { id: 4, goal: "[상황: 고객 단가 확인]\n1회 결제 시 유저들의 평균 결제액(객단가)을 구하고,\n그 컬럼의 이름을 'avg_amt'로 명명하세요.", target: "avg_amt", answer: "SELECT AVG(amt) AS avg_amt FROM sales;", res: [{avg_amt:9500}], hint: "AVG(amt) AS avg_amt" },
               { id: 5, goal: "[상황: 최대 실적 탐색]\n이벤트 성과를 확인하기 위해,\n전체 데이터 중 한 번에 결제된 가장 높은 매출액을 찾으세요.", target: "MAX(amt)", answer: "SELECT MAX(amt) FROM sales;", res: [{'max(amt)':15000}], hint: "MAX(amt) 함수를 사용하세요." },
               { id: 6, goal: "[상황: 최저가 방어선 확인]\n수박의 할인이 너무 심하게 들어간 건 없는지 확인하려 합니다.\ncategory가 '수박'인 건 중 가장 낮은 매출액을 구하세요.", target: "MIN(amt)", answer: "SELECT MIN(amt) FROM sales WHERE category = '수박';", res: [{'min(amt)':5000}], hint: "WHERE 조건을 먼저 적용한 뒤, MIN(amt) 함수를 사용하세요." },
-              { id: 7, goal: "[상황: 영수증 개수 vs 실제 방문자 수 비교]\nsales 테이블은 고객의 과일 결제 내역입니다.\n총 결제 횟수와 고객 결제 횟수를 조회해주세요.\n* 총 결제 횟수(단순 결제 건수): COUNT(u_id)\n* 고객 결제 횟수(중복을 제거한 순수 방문 고객 수): COUNT(DISTINCT u_id)", target: "결제건수, 고유고객수", answer: "SELECT COUNT(u_id), COUNT(DISTINCT u_id) FROM sales;", res: [{'count(u_id)':4, 'count(distinct u_id)':3}], hint: "COUNT(u_id), COUNT(DISTINCT u_id) 형태로 작성하세요." }
+              { id: 7, goal: "[상황: 결제 건수 vs 순수 고객 수 비교]\nsales 테이블은 고객의 과일 결제 내역입니다.\n총 결제 횟수와 고객 결제 횟수를 조회해주세요.\n* 총 결제 횟수(단순 결제 건수): COUNT(u_id)\n* 고객 결제 횟수(중복을 제거한 순수 방문 고객 수): COUNT(DISTINCT u_id)", target: "결제건수, 고유고객수", answer: "SELECT COUNT(u_id), COUNT(DISTINCT u_id) FROM sales;", res: [{'count(u_id)':4, 'count(distinct u_id)':3}], hint: "COUNT(u_id), COUNT(DISTINCT u_id) 형태로 작성하세요." }
             ]
           },
           {
@@ -792,7 +814,7 @@
             title: "테이블 합치기",
             grammar: "JOIN",
             subtitle: "분산된 데이터의 결합과 1:N 관계",
-            theory: "서로 다른 테이블에 흩어진 정보를 공통된 연결 고리(ID 등)를 기준으로 하나로 모읍니다.\n\n[사용 방법]\nSELECT \n  a.컬럼, \n  b.컬럼 \nFROM 테이블A AS a\nLEFT JOIN 테이블B AS b\n  ON a.공통키 = b.공통키\n;\n\n[JOIN의 1:N 뻥튀기(Fan-out) 현상]\nA테이블에 아이디가 1개인데, B테이블에 같은 아이디가 3개 있다면? JOIN 결과는 3줄로 늘어납니다. 데이터 분석 시 가장 흔한 실수이므로, 반드시 1:1 관계인지 1:N 관계인지 확인해야 합니다.\n\n[JOIN 유형별 실제 예시]\n<div class='flex flex-wrap gap-6 my-6'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-48'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>주문내역 (A)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>주문ID</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>유저</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='px-4 py-2 text-center font-bold text-blue-600'>유저A</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='px-4 py-2 text-center text-slate-600'>유저B</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-56'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>접속기록 (B)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>유저</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>유저C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div></div>\n1. LEFT JOIN (A의 모든 데이터 보존)\n유저A의 접속기록이 2개이므로 주문1이 2줄로 뻥튀기됩니다. B에 없는 유저B의 접속기록은 NULL이 됩니다.\n<div class='my-4 border border-blue-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>주문ID</th><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-blue-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr></tbody></table></div>\n2. INNER JOIN (양쪽에 모두 있는 교집합)\n양쪽에 모두 존재하는 유저A의 데이터만 뻥튀기되어 남습니다.\n<div class='my-4 border border-emerald-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-emerald-50 border-b border-emerald-100'><tr><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>주문ID</th><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-emerald-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr></tbody></table></div>\n3. FULL OUTER JOIN (합집합)\n어느 한쪽에만 있는 유저B와 유저C의 데이터도 모두 빈칸(NULL)을 채워 남깁니다.\n<div class='my-4 border border-purple-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-purple-50 border-b border-purple-100'><tr><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>주문ID</th><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-purple-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div>",
+            theory: "서로 다른 테이블에 흩어진 정보를 공통된 연결 고리(ID 등)를 기준으로 하나로 모읍니다.\n\n[사용 방법]\nSELECT \n  a.컬럼, \n  b.컬럼 \nFROM 테이블A AS a\nLEFT JOIN 테이블B AS b\n  ON a.공통키 = b.공통키\n;\n\n[JOIN 개념 이해하기]\n두 개의 테이블을 키값(고객ID 등) 기준으로 합치는 작업입니다.\n<div class='flex flex-col gap-4 my-6'><div class='flex flex-wrap gap-6 justify-center'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-center border-collapse w-64'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='3' class='px-4 py-2 font-black text-slate-700 bg-slate-200/50'>영업 테이블</th></tr><tr><th class='border-r border-slate-200 px-2 py-2 font-bold text-slate-500'>채널</th><th class='border-r border-slate-200 px-2 py-2 font-bold bg-yellow-100 text-rose-600'>고객ID (키값)</th><th class='px-2 py-2 font-bold text-slate-500'>상품</th></tr></thead><tbody class='bg-white'><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1 font-mono'>001</td><td class='px-2 py-1'>TV</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1 font-mono'>002</td><td class='px-2 py-1'>냉장고</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1'>온라인</td><td class='border-r border-slate-100 px-2 py-1 font-mono'>003</td><td class='px-2 py-1'>에어컨</td></tr><tr><td class='border-r border-slate-100 px-2 py-1'>직영점</td><td class='border-r border-slate-100 px-2 py-1 font-mono'>004</td><td class='px-2 py-1'>TV</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-center border-collapse w-64'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='3' class='px-4 py-2 font-black text-slate-700 bg-slate-200/50'>고객정보 테이블</th></tr><tr><th class='border-r border-slate-200 px-2 py-2 font-bold bg-yellow-100 text-rose-600'>고객ID (키값)</th><th class='border-r border-slate-200 px-2 py-2 font-bold text-slate-500'>성함</th><th class='px-2 py-2 font-bold text-slate-500'>지역</th></tr></thead><tbody class='bg-white'><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>001</td><td class='border-r border-slate-100 px-2 py-1'>홍길동</td><td class='px-2 py-1'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>002</td><td class='border-r border-slate-100 px-2 py-1'>신사임당</td><td class='px-2 py-1'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>003</td><td class='border-r border-slate-100 px-2 py-1'>강감찬</td><td class='px-2 py-1'>부산</td></tr><tr><td class='border-r border-slate-100 px-2 py-1 font-mono'>004</td><td class='border-r border-slate-100 px-2 py-1'>짱구</td><td class='px-2 py-1'>강릉</td></tr></tbody></table></div></div><div class='flex justify-center text-blue-500 my-2 font-bold tracking-widest text-sm'>▼ 공통 키(고객ID)를 기준으로 결합 ▼</div><div class='border border-blue-200 rounded-2xl overflow-hidden shadow-sm mx-auto w-full max-w-3xl'><table class='w-full text-sm text-center border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th colspan='5' class='px-4 py-2 font-black text-blue-800 bg-blue-100'>종합 테이블 (결과)</th></tr><tr><th class='border-r border-blue-100 px-2 py-2 font-bold bg-yellow-100 text-rose-600'>고객ID</th><th class='border-r border-blue-100 px-2 py-2 font-bold text-blue-800'>채널</th><th class='border-r border-blue-100 px-2 py-2 font-bold text-blue-800'>상품</th><th class='border-r border-blue-100 px-2 py-2 font-bold text-blue-800'>성함</th><th class='px-2 py-2 font-bold text-blue-800'>지역</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>001</td><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1'>TV</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>홍길동</td><td class='px-2 py-1 font-bold text-blue-600'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>002</td><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1'>냉장고</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>신사임당</td><td class='px-2 py-1 font-bold text-blue-600'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>003</td><td class='border-r border-slate-100 px-2 py-1'>온라인</td><td class='border-r border-slate-100 px-2 py-1'>에어컨</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>강감찬</td><td class='px-2 py-1 font-bold text-blue-600'>부산</td></tr><tr><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>004</td><td class='border-r border-slate-100 px-2 py-1'>직영점</td><td class='border-r border-slate-100 px-2 py-1'>TV</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>짱구</td><td class='px-2 py-1 font-bold text-blue-600'>강릉</td></tr></tbody></table></div></div>\n\n[JOIN의 1:N 뻥튀기(Fan-out) 현상]\nA테이블에 아이디가 1개인데, B테이블에 같은 아이디가 3개 있다면? JOIN 결과는 3줄로 늘어납니다. 데이터 분석 시 가장 흔한 실수이므로, 반드시 1:1 관계인지 1:N 관계인지 확인해야 합니다.\n\n[JOIN 유형별 실제 예시]\n<div class='flex flex-wrap gap-6 my-6'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-48'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>주문내역 (A)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>주문ID</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>유저</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='px-4 py-2 text-center font-bold text-blue-600'>유저A</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='px-4 py-2 text-center text-slate-600'>유저B</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-56'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>접속기록 (B)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>유저</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>유저C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div></div>\n1. LEFT JOIN (A의 모든 데이터 보존)\n유저A의 접속기록이 2개이므로 주문1이 2줄로 뻥튀기됩니다. B에 없는 유저B의 접속기록은 NULL이 됩니다.\n<div class='my-4 border border-blue-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>주문ID</th><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-blue-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr></tbody></table></div>\n2. INNER JOIN (양쪽에 모두 있는 교집합)\n양쪽에 모두 존재하는 유저A의 데이터만 뻥튀기되어 남습니다.\n<div class='my-4 border border-emerald-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-emerald-50 border-b border-emerald-100'><tr><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>주문ID</th><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-emerald-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr></tbody></table></div>\n3. FULL OUTER JOIN (합집합)\n어느 한쪽에만 있는 유저B와 유저C의 데이터도 모두 빈칸(NULL)을 채워 남깁니다.\n<div class='my-4 border border-purple-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-purple-50 border-b border-purple-100'><tr><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>주문ID</th><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-purple-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div>",
             checkpoint: "JOIN 시 기준 키에 중복이 있으면 데이터가 뻥튀기(Fan-out)될 수 있습니다.\n테이블 간의 관계(키가 유일한지)를 먼저 파악하세요.",
             targetTable: "orders & users",
             exampleData: { 
@@ -935,9 +957,9 @@
             mockResult: [{ dt: '2026-05-01', amt: 300 }],
             exercises: [
               { id: 1, goal: "[상황: 기초 테이블 세팅]\n데이터 분석가로서 복잡한 쿼리를 짜기 전, daily_sales 전체를 담은 'base'라는 임시 테이블을 WITH문으로 선언하고\n전체(*)를 조회해 보세요.", target: "*", answer: "WITH base AS (SELECT * FROM daily_sales) SELECT * FROM base;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-01', amt:200, item:'B'},{dt:'2026-05-02', amt:100, item:'B'},{dt:'2026-05-02', amt:400, item:'A'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH base AS (...) SELECT * FROM base" },
-              { id: 2, goal: "[상황: 조건부 임시 테이블]\n금액(amt)이 150 이상인 우수 실적만 모아둔 'high'라는 임시 테이블을 만들고\n전체(*)를 조회하세요.", target: "*", answer: "WITH high AS (SELECT * FROM daily_sales WHERE amt >= 150) SELECT * FROM high;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-02', amt:400, item:'A'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH 문 안에 WHERE 절을 넣으세요." },
+              { id: 2, goal: "[상황: 조건부 임시 테이블]\n금액(amt)이 150 이상인 우수 실적만 모아둔 'high'라는 임시 테이블을 만들고\n전체(*)를 조회하세요.", target: "*", answer: "WITH high AS (SELECT * FROM daily_sales WHERE amt >= 150) SELECT * FROM high;", res: [{dt:'2026-05-01', amt:300, item:'A'},{dt:'2026-05-01', amt:200, item:'B'},{dt:'2026-05-02', amt:400, item:'A'},{dt:'2026-05-03', amt:500, item:'A'}], hint: "WITH 문 안에 WHERE 절을 넣으세요." },
               { id: 3, goal: "[상황: 일별 집계 테이블]\n마케팅팀의 요청으로 일자별(dt) 매출 합계를 계산(별칭: s)해둔 'tmp' 임시 테이블을 구성하고\n전체(*)를 조회하세요.", target: "dt, s", answer: "WITH tmp AS (SELECT dt, SUM(amt) AS s FROM daily_sales GROUP BY dt) SELECT * FROM tmp;", res: [{dt:'2026-05-01', s:500},{dt:'2026-05-02', s:500},{dt:'2026-05-03', s:500}], hint: "GROUP BY를 포함합니다." },
-              { id: 4, goal: "[상황: 더미 데이터 생성]\n시스템 테스트를 위해 단순 숫자 1을 반환하는 가장 단순한 't'라는 임시 테이블을 만들고\n조회해 보세요.", target: "1", answer: "WITH t AS (SELECT 1) SELECT * FROM t;", res: [{1:1}], hint: "WITH t AS (SELECT 1) SELECT * FROM t" },
+              { id: 4, goal: "[상황: 더미 데이터 생성]\n시스템 테스트를 위해 단순 숫자 1을 반환하는 가장 단순한 't'라는 임시 테이블을 만들고\n조해해 보세요.", target: "1", answer: "WITH t AS (SELECT 1) SELECT * FROM t;", res: [{f0_:1}], hint: "WITH t AS (SELECT 1) SELECT * FROM t" },
               { id: 5, goal: "[상황: 가공 데이터 블록 생성]\n기존 매출액(amt)에 2를 곱해 예상 매출(d_amt)을 만든 'double' 임시 테이블을 선언하고\n조회하세요.", target: "d_amt", answer: "WITH double AS (SELECT amt * 2 AS d_amt FROM daily_sales) SELECT * FROM double;", res: [{d_amt:600},{d_amt:400},{d_amt:200},{d_amt:800},{d_amt:1000}], hint: "SELECT amt * 2 AS d_amt" }
             ]
           },
@@ -1237,7 +1259,7 @@
                       <div className="max-w-6xl mx-auto space-y-16 animate-in fade-in duration-500 pb-40 relative">
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 text-blue-600 font-black text-[13px] uppercase tracking-wider"><Icon name="book-open" size={16} /> <span>Phase {currentData.step} 가이드</span></div>
-                          <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">{currentData.title} <br /> <span className="block text-blue-600 text-[28px] md:text-4xl mt-3">{currentData.grammar}</span></h2>
+                          <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">{currentData.title} <br /> <span className="block text-blue-600 text-[28px] md:text-4xl mt-3 whitespace-pre-wrap">{currentData.grammar}</span></h2>
                           <p className="text-xl text-slate-500 font-medium italic break-keep mt-2">"{currentData.subtitle}"</p>
                         </div>
                         
@@ -1257,7 +1279,7 @@
                             <div className="flex items-center gap-3"><div className="w-1.5 h-6 bg-blue-600 rounded-full"></div><h4 className="text-xl font-black text-slate-900">실무 예제</h4></div>
                             {Object.entries(currentData.exampleData).map(([name, rows]) => (
                               <div key={name} className="space-y-3">
-                                <h5 className="text-[12px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Icon name="database" size={14} /> 테이블명 : "{name}"</h5>
+                                <h5 className="text-[12px] font-black text-slate-400 flex items-center gap-2"><Icon name="database" size={14} /> 테이블명 : "{name}"</h5>
                                 <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm"><table className="min-w-full text-sm text-left border-collapse">
                                   <thead className="bg-slate-50 border-b border-slate-200"><tr>{Object.keys(rows[0]).map(k => <th key={k} className="px-5 py-4 font-bold text-slate-500 text-center border-x border-slate-200">{k}</th>)}</tr></thead>
                                   <tbody>{rows.map((row, i) => <tr key={i} className="border-b border-slate-100">{Object.values(row).map((v, j) => <td key={j} className={`px-5 py-3 text-slate-700 font-medium border-x border-slate-100 ${getAlignmentClass(v)}`}>{v}</td>)}</tr>)}</tbody>
@@ -1341,11 +1363,14 @@
                                         setEngineResult(res);
                                         if (res.success) {
                                             const key = `${activeStep}_${exerciseIdx}`;
-                                            if (!solvedTheory.includes(key)) {
-                                                const newSolved = [...solvedTheory, key];
-                                                setSolvedTheory(newSolved);
-                                                localStorage.setItem('sql_solved_theory', JSON.stringify(newSolved));
-                                            }
+                                            setSolvedTheory(prev => {
+                                                if (!prev.includes(key)) {
+                                                    const newSolved = [...prev, key];
+                                                    localStorage.setItem('sql_solved_theory', JSON.stringify(newSolved));
+                                                    return newSolved;
+                                                }
+                                                return prev;
+                                            });
                                         }
                                     }} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg">RUN QUERY <Icon name="play" size={14} fill="white" /></button>
                                   </div>
@@ -1429,7 +1454,6 @@
                                 <div className="bg-amber-50 p-8 rounded-3xl border-2 border-amber-100 space-y-5 shadow-sm">
                                   <h5 className="text-sm font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Icon name="sparkles" size={18} /> 비즈니스 시나리오</h5>
                                   
-                                  {/* 미션 목표 렌더링 개선 */}
                                   {renderGoalText(currentPrac.scenario)}
 
                                   <div className="inline-flex items-center gap-3 pt-4 border-t border-amber-200/50 w-full">
@@ -1443,7 +1467,7 @@
                                   <div className="flex flex-col gap-6">
                                     {Object.entries(PRAC_TABLE_DATA).map(([tbl, rows]) => (
                                       <div key={tbl} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                                        <div className="bg-slate-100 px-4 py-3 text-[11px] font-black text-slate-600 border-b border-slate-200">Table: {tbl}</div>
+                                        <div className="bg-slate-100 px-4 py-3 text-[11px] font-black text-slate-600 border-b border-slate-200">Table: "{tbl}"</div>
                                         <div className="overflow-x-auto"><table className="min-w-full text-[10px] text-left border-collapse">
                                           <thead className="bg-slate-50 border-b border-slate-100"><tr>{Object.keys(rows[0]).map(k=><th key={k} className="px-3 py-2 font-bold text-slate-500 border-x">{k}</th>)}</tr></thead>
                                           <tbody>{rows.map((row, i)=><tr key={i} className="border-b border-slate-50">{Object.values(row).map((v,j)=><td key={j} className="px-3 py-2 text-slate-600 border-x font-mono">{v}</td>)}</tr>)}</tbody>
@@ -1474,11 +1498,14 @@
                                         const res = bigQueryEngine(pracQuery, currentPrac, PRAC_TABLE_DATA);
                                         setPracResult(res);
                                         if (res.success) {
-                                            if (!solvedPrac.includes(pracStep)) {
-                                                const newSolved = [...solvedPrac, pracStep];
-                                                setSolvedPrac(newSolved);
-                                                localStorage.setItem('sql_solved_prac', JSON.stringify(newSolved));
-                                            }
+                                            setSolvedPrac(prev => {
+                                                if (!prev.includes(pracStep)) {
+                                                    const newSolved = [...prev, pracStep];
+                                                    localStorage.setItem('sql_solved_prac', JSON.stringify(newSolved));
+                                                    return newSolved;
+                                                }
+                                                return prev;
+                                            });
                                         }
                                     }} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-lg">RUN QUERY <Icon name="play" size={14} fill="white" /></button>
                                 </div>
