@@ -98,7 +98,316 @@
             return <span ref={containerRef} className={`inline-flex items-center justify-center ${className}`}></span>;
         };
 
-        // --- 구조 (Structure) 데이터 ---
+        // --- 텍스트 렌더링 도우미 (주제명 뱃지 및 줄바꿈 처리) ---
+        const renderTheoryText = (text) => {
+          const parts = text.split(/(\[[^\]]+\])/g);
+          return parts.map((part, index) => {
+            if (part.startsWith('[') && part.endsWith(']')) {
+              const title = part.slice(1, -1);
+              //  인 경우 이미지 플레이스홀더로 렌더링
+              if (title.startsWith('Image of ')) {
+                const altText = title.replace('Image of ', '');
+                return (
+                  <div key={index} className="w-full bg-slate-200 rounded-xl my-6 flex items-center justify-center text-slate-500 font-bold shadow-sm" style={{ minHeight: '120px' }}>
+                    [ 🖼️ {altText} ]
+                  </div>
+                );
+              }
+              return (
+                <div key={index} className="inline-flex items-center w-fit bg-blue-50 text-blue-700 px-5 py-2 rounded-full text-[14px] font-black mt-10 mb-3 border border-blue-200 shadow-sm">
+                  {title}
+                </div>
+              );
+            }
+            let textContent = part;
+            // 뱃지 다음의 텍스트는 선행 줄바꿈 제거 (뱃지 margin으로 여백 조절)
+            if (index > 0 && parts[index - 1].startsWith('[')) {
+              textContent = textContent.replace(/^\n+/, '');
+            }
+            // 뱃지 이전의 텍스트는 후행 줄바꿈 제거 (뱃지 margin으로 여백 조절)
+            if (index < parts.length - 1 && parts[index + 1].startsWith('[')) {
+              textContent = textContent.replace(/\n+$/, '');
+            }
+            // 텍스트 내에 포함된 HTML 태그(table 등)를 안전하게 렌더링
+            return <div key={index} className="whitespace-pre-wrap text-slate-700 leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: textContent }} />;
+          });
+        };
+
+        const renderGoalText = (text) => {
+            const match = text.match(/^(\[.*?\])\s*(.*)/is);
+            if (match) {
+                return (
+                    <div className="space-y-4">
+                        <span className="inline-block bg-amber-500 text-white px-3 py-1 rounded-lg text-[13px] font-black tracking-wide shadow-sm">
+                            {match[1]}
+                        </span>
+                        <div className="text-2xl md:text-3xl font-black text-slate-900 leading-snug break-keep whitespace-pre-wrap">
+                            {match[2]}
+                        </div>
+                    </div>
+                );
+            }
+            return <div className="text-2xl md:text-3xl font-black text-slate-900 leading-snug break-keep whitespace-pre-wrap">{text}</div>;
+        };
+
+        // --- 빅쿼리 시뮬레이터 실시간 검증 엔진 ---
+        const bigQueryEngine = (input, currentEx, sourceDataObj) => {
+          if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
+          if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
+
+          const lowerInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
+          const lowerAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
+          const goalText = currentEx.goal || currentEx.scenario || '';
+
+          // 1. 테이블명 대소문자 엄격 검사
+          const usedTables = [];
+          const fromJoinRegex = /(?:FROM|JOIN)\s+`?([a-zA-Z0-9_]+)`?/gi;
+          let m;
+          while ((m = fromJoinRegex.exec(input)) !== null) {
+              usedTables.push(m[1]);
+          }
+          
+          for (const ut of usedTables) {
+              const exactMatch = Object.keys(sourceDataObj).find(k => k === ut);
+              const lowerMatch = Object.keys(sourceDataObj).find(k => k.toLowerCase() === ut.toLowerCase());
+              
+              if (!exactMatch && lowerMatch) {
+                  return {
+                      success: false,
+                      data: [],
+                      error: `실행 오류: 빅쿼리에서는 테이블명 대/소문자를 엄격히 구분합니다. '${ut}'가 아닌 정확한 테이블명 '${lowerMatch}'(으)로 작성해주세요.`
+                  };
+              }
+          }
+
+          // 초강력 공백 제거 로직
+          const cleanStrForLiteral = (str) => {
+              let cleaned = str.replace(/\b[a-z_`][a-z0-9_`]*\./gi, '');
+              cleaned = cleaned.replace(/\s+/g, ' ').replace(/\bas\b/gi, '');
+              Object.keys(sourceDataObj).forEach(tbl => {
+                  const regex = new RegExp(`\\b${tbl}\\b\\s+(?!(?:join|on|where|group|order|having|select|left|right|inner|full|outer|cross|union|limit)\\b)[a-z0-9_]+\\b`, 'gi');
+                  cleaned = cleaned.replace(regex, tbl);
+              });
+              return cleaned.replace(/\s+/g, '')
+                            .replace(/1=1and/gi, '')
+                            .replace(/1=1/gi, '')
+                            .replace(/[()]/g, '')
+                            .replace(/;/g, '');
+          };
+                                       
+          const normalizedInputLiteral = cleanStrForLiteral(input);
+          const normalizedAnswerLiteral = cleanStrForLiteral(currentEx.answer);
+          
+          const normalizedInput = normalizedInputLiteral.toLowerCase();
+          const normalizedAnswer = normalizedAnswerLiteral.toLowerCase();
+
+          let executedData = null;
+          let executionError = null;
+          let isDataCorrect = false;
+          let showSuccessMessageInsteadOfData = false;
+          
+          // 텍스트 완전 일치 (리터럴 텍스트 대소문자까지 모두 일치할 경우에만 우회 통과 허용)
+          let isStringCorrect = false;
+          if (normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '').trim() || normalizedInput + ';' === normalizedAnswer) {
+              const getLiterals = (str) => {
+                  const matches = str.match(/['"][^'"]*['"]/g);
+                  return matches ? matches.map(mat => mat.slice(1, -1)) : [];
+              };
+              const inputLits = getLiterals(input).join('');
+              const answerLits = getLiterals(currentEx.answer).join('');
+              if (inputLits === answerLits) {
+                  isStringCorrect = true;
+              }
+          }
+          
+          try {
+              const alasql = window.alasql;
+              if (!alasql) throw new Error("SQL 엔진 로딩 중입니다.");
+
+              let sqlForAlasql = input.trim()
+                  .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
+                  .replace(/INT64/gi, 'INT');
+
+              // 가상 엔진(Alasql) 윈도우 함수 버그 우회
+              sqlForAlasql = sqlForAlasql.replace(/OVER\s*\(([^)]+)\)/gi, (match, inner) => {
+                  return `OVER(${inner.replace(/[a-zA-Z0-9_`]+\./g, '')})`;
+              });
+                  
+              if (sqlForAlasql.toUpperCase().includes('QUALIFY')) {
+                  throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 직접 렌더링을 지원하지 않습니다. 서브쿼리를 이용해 주세요.");
+              }
+
+              const createTableMatch = sqlForAlasql.match(/CREATE\s+OR\s+REPLACE\s+TABLE\s+([a-zA-Z0-9_`]+)\s+AS/i);
+              if (createTableMatch) {
+                  showSuccessMessageInsteadOfData = true;
+                  sqlForAlasql = sqlForAlasql.replace(/CREATE\s+OR\s+REPLACE\s+TABLE\s+[a-zA-Z0-9_`]+\s+AS/i, '');
+              }
+
+              sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
+
+              const literalMap = {
+                  'active': 'Active', 'churned': 'Churned',
+                  'vip': 'VIP', 'gold': 'Gold', 'silver': 'Silver', 'bronze': 'Bronze',
+                  'pc': 'PC', 'mobile': 'Mobile', 'tablet': 'Tablet',
+                  'food': 'Food', 'tech': 'Tech'
+              };
+              Object.keys(literalMap).forEach(key => {
+                  const regex = new RegExp(`['"]${key}['"]`, 'gi');
+                  sqlForAlasql = sqlForAlasql.replace(regex, `'${literalMap[key]}'`);
+              });
+              
+              Object.keys(sourceDataObj).forEach(tbl => {
+                  const regex = new RegExp(`\\b${tbl}\\b`, 'gi');
+                  sqlForAlasql = sqlForAlasql.replace(regex, tbl.toLowerCase());
+              });
+
+              const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
+              if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
+                  sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+?)(\s*HAVING|\s*ORDER\s+BY|\s*LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
+                      const upToMatch = string.substring(0, offset);
+                      const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
+                      if (selectMatches.length > 0) {
+                          const lastSelect = selectMatches[selectMatches.length - 1][1];
+                          const localSelectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
+                          const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
+                          const cols = indices.map(idx => {
+                              if (!isNaN(idx) && idx > 0 && idx <= localSelectItems.length) {
+                                  let item = localSelectItems[idx - 1];
+                                  if (!item) return String(idx);
+                                  let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_가-힣]+)$/is) || item.match(/\s+([a-zA-Z0-9_가-힣]+)$/is);
+                                  return aliasMatch ? aliasMatch[1].trim() : item.trim();
+                              }
+                              return String(idx);
+                          });
+                          return `GROUP BY ${cols.join(', ')}${rest}`;
+                      }
+                      return match;
+                  });
+
+                  sqlForAlasql = sqlForAlasql.replace(/ORDER\s+BY\s+([^;]+?)(\s*LIMIT|\s*\)|\s*;|\s*$)/gis, (match, orderStr, rest, offset, string) => {
+                      const upToMatch = string.substring(0, offset);
+                      const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
+                      if (selectMatches.length > 0) {
+                          const lastSelect = selectMatches[selectMatches.length - 1][1];
+                          const localSelectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
+                          const orderItems = orderStr.split(',').map(s => {
+                              let parts = s.trim().split(/\s+/).filter(Boolean);
+                              let idx = parseInt(parts[0], 10);
+                              if (!isNaN(idx) && idx > 0 && idx <= localSelectItems.length) {
+                                  let item = localSelectItems[idx - 1];
+                                  let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_가-힣]+)$/is) || item.match(/\s+([a-zA-Z0-9_가-힣]+)$/is);
+                                  parts[0] = aliasMatch ? aliasMatch[1].trim() : item.trim();
+                              }
+                              return parts.join(' ');
+                          });
+                          return `ORDER BY ${orderItems.join(', ')}${rest}`;
+                      }
+                      return match;
+                  });
+              }
+        
+              Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
+                  const lowerTbl = tbl.toLowerCase();
+                  alasql(`DROP TABLE IF EXISTS \`${lowerTbl}\``);
+                  alasql(`CREATE TABLE \`${lowerTbl}\``);
+                  if (!alasql.tables[lowerTbl]) alasql.tables[lowerTbl] = { data: [] };
+                  alasql.tables[lowerTbl].data = JSON.parse(JSON.stringify(rows));
+              });
+              
+              executedData = alasql(sqlForAlasql);
+              
+              if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
+                  if (normalizedAnswer.includes('create or replace table') && !normalizedInput.includes('create or replace table')) {
+                      isDataCorrect = false;
+                      executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
+                  } else {
+                      const isOrderRequired = currentEx.goal.includes('정렬') || normalizedAnswer.includes('order by') || normalizedAnswer.includes('limit');
+
+                      const normalizeValuesOnly = (data, sortRows) => {
+                          const mappedData = data.map(row => JSON.stringify(Object.values(row).map(v => v !== null && v !== undefined ? String(v) : 'NULL')));
+                          return sortRows ? mappedData.sort() : mappedData;
+                      };
+                      
+                      if (JSON.stringify(normalizeValuesOnly(executedData, !isOrderRequired)) === JSON.stringify(normalizeValuesOnly(currentEx.res, !isOrderRequired))) {
+                          isDataCorrect = true;
+                      }
+
+                      if (!isDataCorrect) {
+                          const normalize = (data, sortRows) => {
+                              const mappedData = data.map(row => {
+                                  const newRow = {};
+                                  Object.keys(row).forEach(key => {
+                                      const lowerKey = (key.includes('.') ? key.split('.')[1] : key).toLowerCase();
+                                      if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) return; 
+                                      newRow[lowerKey] = row[key];
+                                  });
+                                  expectedKeys.forEach(ek => { if (!(ek in newRow)) newRow[ek] = null; });
+                                  return JSON.stringify(Object.entries(newRow).sort());
+                              });
+                              return sortRows ? mappedData.sort() : mappedData;
+                          };
+                          if (JSON.stringify(normalize(executedData, !isOrderRequired)) === JSON.stringify(normalize(currentEx.res, !isOrderRequired))) {
+                              isDataCorrect = true;
+                          }
+                      }
+                      
+                      if (!isDataCorrect && executedData.length === 1 && Object.keys(executedData[0]).length === 1 && Object.keys(currentEx.res[0]).length === 1) {
+                          if (String(Object.values(executedData[0])[0]) === String(Object.values(currentEx.res[0])[0])) isDataCorrect = true;
+                      }
+                  }
+              }
+          } catch (err) {
+              executionError = "실행 오류: " + err.message;
+              if (err.message.includes('Table does not exist')) executionError += "\n\n💡 [분석가 팁] 빅쿼리에서 테이블명은 대/소문자를 엄격하게 구분합니다. 우측 상단의 데이터 세트의 테이블명과 동일한지 확인해 주세요.";
+              if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parse error')) executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다.";
+              if (normalizedInput.includes('count(distinct(')) executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면 구문 오류가 발생합니다. 괄호 없이 작성해 보세요.";
+          }
+
+          let finalData = executedData;
+          if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
+              finalData = []; 
+              if (executionError) executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
+          }
+
+          if (goalText.includes('비정상 결제 탐지')) {
+              const rawLower = input.replace(/\s+/g, '').toLowerCase();
+              if (rawLower.includes('nameisnull') && !rawLower.includes('.nameisnull')) {
+                  return { success: false, data: finalData, error: "💡 [분석가 팁] 소속 테이블 누락: 실무 JOIN에서는 반드시 'b.name IS NULL'처럼 테이블 별칭을 명시해야 합니다." };
+              }
+          }
+
+          const rules = [
+              { keyword: 'group by', condition: lowerAnswer.includes('group by'), error: "문법 오류 (그룹화 필요): 집계 함수와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용해야 합니다." },
+              { keyword: 'order by', condition: goalText.includes('정렬') || lowerAnswer.includes('order by') || lowerAnswer.includes('limit'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
+              { keyword: 'with ', condition: lowerAnswer.includes('with '), error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
+              { keyword: '(select', condition: lowerAnswer.includes('(select') && goalText.includes('서브쿼리'), error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요.", alt: '( select' },
+              { keyword: 'row_number', condition: lowerAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
+              { keyword: 'concat', condition: lowerAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
+              { keyword: 'substr', condition: lowerAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
+              { keyword: 'distinct', condition: lowerAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." },
+              { keyword: 'left join', condition: lowerAnswer.includes('left join'), error: "오답입니다. 기준 데이터가 누락되지 않도록 'LEFT JOIN'을 사용해야 합니다." }
+          ];
+
+          for (const rule of rules) {
+              if (rule.condition) {
+                  let hasKeyword = lowerInput.includes(rule.keyword);
+                  if (rule.alt && !hasKeyword) hasKeyword = lowerInput.includes(rule.alt);
+                  if (!hasKeyword && !isStringCorrect) return { success: false, data: finalData, error: rule.error }; 
+              }
+          }
+
+          if (/\bas\s+['"][^'"]+['"]/i.test(input)) return { success: false, data: finalData, error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 백틱(`)을 쓰거나 기호 없이 작성해야 합니다." };
+          
+          if (isDataCorrect || isStringCorrect) {
+            let displayData = isDataCorrect ? finalData : currentEx.res; 
+            if (showSuccessMessageInsteadOfData) displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
+            return { success: true, data: displayData };
+          } else {
+            return { success: false, data: finalData, error: executionError || "오답입니다. 추출해야 할 컬럼명과 필터, 그리고 문제의 의도(정렬, 생성 등)를 확인하세요." };
+          }
+        };
+
+        // --- 통합된 STRUCTURE_CONTENT ---
         const STRUCTURE_CONTENT = [
             {
                 id: "term_match",
@@ -282,265 +591,7 @@
             }
         ];
 
-        // --- 텍스트 렌더링 도우미 (주제명 뱃지 및 줄바꿈 처리) ---
-        const renderTheoryText = (text) => {
-          const parts = text.split(/(\[[^\]]+\])/g);
-          return parts.map((part, index) => {
-            if (part.startsWith('[') && part.endsWith(']')) {
-              const title = part.slice(1, -1);
-              return (
-                <div key={index} className="inline-flex items-center w-fit bg-blue-50 text-blue-700 px-5 py-2 rounded-full text-[14px] font-black mt-10 mb-3 border border-blue-200 shadow-sm">
-                  {title}
-                </div>
-              );
-            }
-            let textContent = part;
-            if (index > 0 && parts[index - 1].startsWith('[')) {
-              textContent = textContent.replace(/^\n+/, '');
-            }
-            if (index < parts.length - 1 && parts[index + 1].startsWith('[')) {
-              textContent = textContent.replace(/\n+$/, '');
-            }
-            return <div key={index} className="whitespace-pre-wrap text-slate-700 leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: textContent }} />;
-          });
-        };
-
-        const renderGoalText = (text) => {
-            const match = text.match(/^(\[.*?\])\s*(.*)/is);
-            if (match) {
-                return (
-                    <div className="space-y-4">
-                        <span className="inline-block bg-amber-500 text-white px-3 py-1 rounded-lg text-[13px] font-black tracking-wide shadow-sm">
-                            {match[1]}
-                        </span>
-                        <div className="text-2xl md:text-3xl font-black text-slate-900 leading-snug break-keep whitespace-pre-wrap">
-                            {match[2]}
-                        </div>
-                    </div>
-                );
-            }
-            return <div className="text-2xl md:text-3xl font-black text-slate-900 leading-snug break-keep whitespace-pre-wrap">{text}</div>;
-        };
-
-        // --- 빅쿼리 시뮬레이터 실시간 검증 엔진 ---
-        const bigQueryEngine = (input, currentEx, sourceDataObj) => {
-          if (!input) return { success: false, data: [], error: "명령어를 입력해주세요." };
-          if (!input.trim().endsWith(';')) return { success: false, data: [], error: "문법 오류: 쿼리 맨 끝에 세미콜론(;)이 빠졌습니다." };
-
-          const lowerInput = input.trim().replace(/\s+/g, ' ').toLowerCase();
-          const lowerAnswer = currentEx.answer.trim().replace(/\s+/g, ' ').toLowerCase();
-          const goalText = currentEx.goal || currentEx.scenario || '';
-
-          const usedTables = [];
-          const fromJoinRegex = /(?:FROM|JOIN)\s+`?([a-zA-Z0-9_]+)`?/gi;
-          let m;
-          while ((m = fromJoinRegex.exec(input)) !== null) {
-              usedTables.push(m[1]);
-          }
-          
-          for (const ut of usedTables) {
-              const exactMatch = Object.keys(sourceDataObj).find(k => k === ut);
-              const lowerMatch = Object.keys(sourceDataObj).find(k => k.toLowerCase() === ut.toLowerCase());
-              if (!exactMatch && lowerMatch) {
-                  return { success: false, data: [], error: `실행 오류: 빅쿼리에서는 테이블명 대/소문자를 엄격히 구분합니다. '${ut}'가 아닌 정확한 테이블명 '${lowerMatch}'(으)로 작성해주세요.` };
-              }
-          }
-
-          const cleanStrForLiteral = (str) => {
-              let cleaned = str.replace(/\b[a-z_`][a-z0-9_`]*\./gi, '');
-              cleaned = cleaned.replace(/\s+/g, ' ').replace(/\bas\b/gi, '');
-              Object.keys(sourceDataObj).forEach(tbl => {
-                  const regex = new RegExp(`\\b${tbl}\\b\\s+(?!(?:join|on|where|group|order|having|select|left|right|inner|full|outer|cross|union|limit)\\b)[a-z0-9_]+\\b`, 'gi');
-                  cleaned = cleaned.replace(regex, tbl);
-              });
-              return cleaned.replace(/\s+/g, '').replace(/1=1and/gi, '').replace(/1=1/gi, '').replace(/[()]/g, '').replace(/;/g, '');
-          };
-                                       
-          const normalizedInputLiteral = cleanStrForLiteral(input);
-          const normalizedAnswerLiteral = cleanStrForLiteral(currentEx.answer);
-          const normalizedInput = normalizedInputLiteral.toLowerCase();
-          const normalizedAnswer = normalizedAnswerLiteral.toLowerCase();
-
-          let executedData = null;
-          let executionError = null;
-          let isDataCorrect = false;
-          let showSuccessMessageInsteadOfData = false;
-          
-          let isStringCorrect = false;
-          if (normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '').trim() || normalizedInput + ';' === normalizedAnswer) {
-              const getLiterals = (str) => { const matches = str.match(/['"][^'"]*['"]/g); return matches ? matches.map(mat => mat.slice(1, -1)) : []; };
-              if (getLiterals(input).join('') === getLiterals(currentEx.answer).join('')) isStringCorrect = true;
-          }
-          
-          try {
-              const alasql = window.alasql;
-              if (!alasql) throw new Error("SQL 엔진 로딩 중입니다.");
-
-              let sqlForAlasql = input.trim().replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; }).replace(/INT64/gi, 'INT');
-              sqlForAlasql = sqlForAlasql.replace(/OVER\s*\(([^)]+)\)/gi, (match, inner) => `OVER(${inner.replace(/[a-zA-Z0-9_`]+\./g, '')})`);
-                  
-              if (sqlForAlasql.toUpperCase().includes('QUALIFY')) throw new Error("QUALIFY 구문 등 윈도우 함수는 브라우저 가상 엔진에서 직접 렌더링을 지원하지 않습니다. 서브쿼리를 이용해 주세요.");
-
-              const createTableMatch = sqlForAlasql.match(/CREATE\s+OR\s+REPLACE\s+TABLE\s+([a-zA-Z0-9_`]+)\s+AS/i);
-              if (createTableMatch) {
-                  showSuccessMessageInsteadOfData = true;
-                  sqlForAlasql = sqlForAlasql.replace(/CREATE\s+OR\s+REPLACE\s+TABLE\s+[a-zA-Z0-9_`]+\s+AS/i, '');
-              }
-
-              sqlForAlasql = sqlForAlasql.replace(/FULL\s+OUTER\s+JOIN/gi, 'OUTER JOIN');
-
-              const literalMap = { 'active': 'Active', 'churned': 'Churned', 'vip': 'VIP', 'gold': 'Gold', 'silver': 'Silver', 'bronze': 'Bronze', 'pc': 'PC', 'mobile': 'Mobile', 'tablet': 'Tablet', 'food': 'Food', 'tech': 'Tech' };
-              Object.keys(literalMap).forEach(key => { sqlForAlasql = sqlForAlasql.replace(new RegExp(`['"]${key}['"]`, 'gi'), `'${literalMap[key]}'`); });
-              Object.keys(sourceDataObj).forEach(tbl => { sqlForAlasql = sqlForAlasql.replace(new RegExp(`\\b${tbl}\\b`, 'gi'), tbl.toLowerCase()); });
-
-              const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
-              if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
-                  sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+?)(\s*HAVING|\s*ORDER\s+BY|\s*LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
-                      const upToMatch = string.substring(0, offset);
-                      const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
-                      if (selectMatches.length > 0) {
-                          const lastSelect = selectMatches[selectMatches.length - 1][1];
-                          const localSelectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
-                          const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
-                          const cols = indices.map(idx => {
-                              if (!isNaN(idx) && idx > 0 && idx <= localSelectItems.length) {
-                                  let item = localSelectItems[idx - 1];
-                                  if (!item) return String(idx);
-                                  let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_가-힣]+)$/is) || item.match(/\s+([a-zA-Z0-9_가-힣]+)$/is);
-                                  return aliasMatch ? aliasMatch[1].trim() : item.trim();
-                              }
-                              return String(idx);
-                          });
-                          return `GROUP BY ${cols.join(', ')}${rest}`;
-                      }
-                      return match;
-                  });
-
-                  sqlForAlasql = sqlForAlasql.replace(/ORDER\s+BY\s+([^;]+?)(\s*LIMIT|\s*\)|\s*;|\s*$)/gis, (match, orderStr, rest, offset, string) => {
-                      const upToMatch = string.substring(0, offset);
-                      const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
-                      if (selectMatches.length > 0) {
-                          const lastSelect = selectMatches[selectMatches.length - 1][1];
-                          const localSelectItems = lastSelect.split(/,(?![^\(]*\))/).map(s => s.trim());
-                          const orderItems = orderStr.split(',').map(s => {
-                              let parts = s.trim().split(/\s+/).filter(Boolean);
-                              let idx = parseInt(parts[0], 10);
-                              if (!isNaN(idx) && idx > 0 && idx <= localSelectItems.length) {
-                                  let item = localSelectItems[idx - 1];
-                                  let aliasMatch = item.match(/\bAS\s+([a-zA-Z0-9_가-힣]+)$/is) || item.match(/\s+([a-zA-Z0-9_가-힣]+)$/is);
-                                  parts[0] = aliasMatch ? aliasMatch[1].trim() : item.trim();
-                              }
-                              return parts.join(' ');
-                          });
-                          return `ORDER BY ${orderItems.join(', ')}${rest}`;
-                      }
-                      return match;
-                  });
-              }
-        
-              Object.entries(sourceDataObj).forEach(([tbl, rows]) => {
-                  const lowerTbl = tbl.toLowerCase();
-                  alasql(`DROP TABLE IF EXISTS \`${lowerTbl}\``);
-                  alasql(`CREATE TABLE \`${lowerTbl}\``);
-                  if (!alasql.tables[lowerTbl]) alasql.tables[lowerTbl] = { data: [] };
-                  alasql.tables[lowerTbl].data = JSON.parse(JSON.stringify(rows));
-              });
-              
-              executedData = alasql(sqlForAlasql);
-              
-              if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
-                  if (normalizedAnswer.includes('createorreplicatable') && !normalizedInput.includes('createorreplicatable')) {
-                      isDataCorrect = false;
-                      executionError = "테이블 생성 구문(CREATE OR REPLACE TABLE)이 누락되었습니다.";
-                  } else {
-                      const isOrderRequired = goalText.includes('정렬') || lowerAnswer.includes('order by') || lowerAnswer.includes('limit');
-                      const expectedKeys = currentEx.res && currentEx.res.length > 0 ? Object.keys(currentEx.res[0]).map(k => k.toLowerCase()) : [];
-
-                      const normalizeValuesOnly = (data, sortRows) => {
-                          const mappedData = data.map(row => JSON.stringify(Object.values(row).map(v => v !== null && v !== undefined ? String(v) : 'NULL')));
-                          return sortRows ? mappedData.sort() : mappedData;
-                      };
-                      
-                      if (JSON.stringify(normalizeValuesOnly(executedData, !isOrderRequired)) === JSON.stringify(normalizeValuesOnly(currentEx.res, !isOrderRequired))) {
-                          isDataCorrect = true;
-                      }
-
-                      if (!isDataCorrect) {
-                          const normalize = (data, sortRows) => {
-                              const mappedData = data.map(row => {
-                                  const newRow = {};
-                                  Object.keys(row).forEach(key => {
-                                      const lowerKey = (key.includes('.') ? key.split('.')[1] : key).toLowerCase();
-                                      if (newRow[lowerKey] !== undefined && newRow[lowerKey] !== null && (row[key] === null || row[key] === undefined)) return; 
-                                      newRow[lowerKey] = row[key];
-                                  });
-                                  expectedKeys.forEach(ek => { if (!(ek in newRow)) newRow[ek] = null; });
-                                  return JSON.stringify(Object.entries(newRow).sort());
-                              });
-                              return sortRows ? mappedData.sort() : mappedData;
-                          };
-                          if (JSON.stringify(normalize(executedData, !isOrderRequired)) === JSON.stringify(normalize(currentEx.res, !isOrderRequired))) {
-                              isDataCorrect = true;
-                          }
-                      }
-                      
-                      if (!isDataCorrect && executedData.length === 1 && Object.keys(executedData[0]).length === 1 && Object.keys(currentEx.res[0]).length === 1) {
-                          if (String(Object.values(executedData[0])[0]) === String(Object.values(currentEx.res[0])[0])) isDataCorrect = true;
-                      }
-                  }
-              }
-          } catch (err) {
-              executionError = "실행 오류: " + err.message;
-              if (err.message.includes('Table does not exist')) executionError += "\n\n💡 [분석가 팁] 빅쿼리에서 테이블명은 대/소문자를 엄격하게 구분합니다. 우측 상단의 데이터 세트의 테이블명과 동일한지 확인해 주세요.";
-              if (normalizedInput.includes('where') && normalizedInput.match(/where\s+.*,/i) && err.message.toLowerCase().includes('parseerror')) executionError += "\n\n💡 [분석가 팁] WHERE 절에서 여러 조건을 연결할 때는 콤마(,)가 아니라 반드시 'AND' 또는 'OR'를 사용해야 합니다.";
-              if (normalizedInput.includes('count(distinct(')) executionError += "\n\n💡 [분석가 팁] DISTINCT 사용 시 컬럼명에 괄호를 씌우면 구문 오류가 발생합니다. 괄호 없이 작성해 보세요.";
-          }
-
-          let finalData = executedData;
-          if (finalData === null || finalData === undefined || !Array.isArray(finalData)) {
-              finalData = []; 
-              if (executionError) executionError += "\n\n(문법 오류로 인해 쿼리가 정상 실행되지 않아 결과 표가 생략되었습니다.)";
-          }
-
-          if (goalText.includes('비정상 결제 탐지')) {
-              const rawLower = input.replace(/\s+/g, '').toLowerCase();
-              if (rawLower.includes('nameisnull') && !rawLower.includes('.nameisnull')) {
-                  return { success: false, data: finalData, error: "💡 [분석가 팁] 소속 테이블 누락: 실무 JOIN에서는 반드시 'b.name IS NULL'처럼 테이블 별칭을 명시해야 합니다." };
-              }
-          }
-
-          const rules = [
-              { keyword: 'group by', condition: lowerAnswer.includes('group by'), error: "문법 오류 (그룹화 필요): 집계 함수와 일반 컬럼을 함께 조회하려면 반드시 GROUP BY 절을 사용해야 합니다." },
-              { keyword: 'order by', condition: goalText.includes('정렬') || lowerAnswer.includes('order by') || lowerAnswer.includes('limit'), error: "오답입니다. 문제에서 요구한 '정렬(ORDER BY)' 구문이 누락되었습니다." },
-              { keyword: 'with ', condition: lowerAnswer.includes('with '), error: "오답입니다. 문제의 의도에 맞게 'WITH' 절을 사용하여 임시 테이블을 선언해 주세요." },
-              { keyword: '(select', condition: lowerAnswer.includes('(select') && goalText.includes('서브쿼리'), error: "오답입니다. 문제의 의도에 맞게 서브쿼리 '(SELECT ...)' 구문을 활용하여 작성해 주세요.", alt: '( select' },
-              { keyword: 'row_number', condition: lowerAnswer.includes('row_number'), error: "오답입니다. 문제의 의도에 맞게 'ROW_NUMBER()' 윈도우 함수를 사용해 주세요." },
-              { keyword: 'concat', condition: lowerAnswer.includes('concat'), error: "오답입니다. 'CONCAT' 함수를 사용하여 문자열을 결합해 주세요." },
-              { keyword: 'substr', condition: lowerAnswer.includes('substr'), error: "오답입니다. 'SUBSTR' 함수를 사용하여 문자열을 추출해 주세요." },
-              { keyword: 'distinct', condition: lowerAnswer.includes('distinct'), error: "오답입니다. 'DISTINCT' 구문을 사용하여 중복을 제거해 주세요." },
-              { keyword: 'left join', condition: lowerAnswer.includes('left join'), error: "오답입니다. 기준 데이터가 누락되지 않도록 'LEFT JOIN'을 사용해야 합니다." }
-          ];
-
-          for (const rule of rules) {
-              if (rule.condition) {
-                  let hasKeyword = lowerInput.includes(rule.keyword);
-                  if (rule.alt && !hasKeyword) hasKeyword = lowerInput.includes(rule.alt);
-                  if (!hasKeyword && !isStringCorrect) return { success: false, data: finalData, error: rule.error }; 
-              }
-          }
-
-          if (/\bas\s+['"][^'"]+['"]/i.test(input)) return { success: false, data: finalData, error: "문법 오류 (별칭 규칙 위반): 별칭(Alias)에 작은따옴표(')나 큰따옴표(\")를 사용하셨습니다. 백틱(`)을 쓰거나 기호 없이 작성해야 합니다." };
-          
-          if (isDataCorrect || isStringCorrect) {
-            let displayData = isDataCorrect ? finalData : currentEx.res; 
-            if (showSuccessMessageInsteadOfData) displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
-            return { success: true, data: displayData };
-          } else {
-            return { success: false, data: finalData, error: executionError || "오답입니다. 추출해야 할 컬럼명과 필터, 그리고 문제의 의도(정렬, 생성 등)를 확인하세요." };
-          }
-        };
-
-        // --- 11-Step 이론 및 문제 데이터 ---
+        // --- 통합된 단일 STEPS_DATA ---
         const STEPS_DATA = [
           {
             step: 1,
@@ -804,83 +855,46 @@
 
 이때 쿼리 안쪽에 또 다른 쿼리를 중첩하여 실행하는 방식을 '서브쿼리(Subquery)'라고 부릅니다.
 
-서브쿼리는 반드시 괄호 \`()\`로 감싸야 하며,
-시스템은 안쪽에 있는 서브쿼리를 먼저 실행한 후 그 결과를 바깥쪽 메인 쿼리에 전달합니다.
+서브쿼리는 반드시 괄호 \`()\`로 감싸야 하며, 시스템은 안쪽에 있는 서브쿼리를 먼저 실행한 후 그 결과를 바깥쪽 메인 쿼리에 전달합니다.
 
-[2. WHERE 절 서브쿼리 개념]
-WHERE 절 서브쿼리의 핵심 목적은 단순히 수학적인 '연산'을 하기 위함이 아닙니다.
+[2. WHERE 절 서브쿼리]
+단순한 연산이 아니라, 특정 조건에 맞는 여러 개의 데이터 목록(집합)에 현재 행의 값이 포함되는지 확인하거나, 단일 값과 비교하여 필터링할 때 주로 사용합니다.
 
-가장 중요한 역할은 현재 테이블의 데이터를 필터링하기 위해,
-다른 데이터 집합의 결과를 '조건'으로 끌어와 비교하는 데 있습니다.
-
-[3. WHERE 절 서브쿼리를 사용하는 상황]
-<div class='mt-4 space-y-6'>
-  <div>
-    <div class='font-black text-lg text-slate-800 mb-1'>상황 A. 데이터 집합 포함 여부 (IN / NOT IN)</div>
-    <p class='text-slate-600 mb-3 break-keep'>수학적 단일 값 연산이 아니라, 특정 조건에 맞는 여러 개의 데이터 목록(집합)에 현재 행의 값이 포함되는지 확인할 때 주로 사용합니다.</p>
-    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 서울에 위치한 부서에서 근무하는 직원만 찾기</div>
-    <div class='bg-slate-800 text-blue-300 p-4 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE dept_id IN 
-  (SELECT dept_id 
-   FROM departments 
-   WHERE location = 'Seoul')</div>
+<div class='mt-3 space-y-4'>
+  <div class='bg-slate-50 p-4 rounded-xl border border-slate-200'>
+    <div class='font-bold text-slate-800 mb-2'>👉 (상황 A) 포함 여부 확인 (IN) : 서울에 위치한 부서에서 근무하는 직원만 찾기</div>
+    <div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE dept_id IN 
+  (SELECT dept_id FROM departments WHERE location = 'Seoul')</div>
   </div>
-  <div>
-    <div class='font-black text-lg text-slate-800 mb-1'>상황 B. 연관 데이터 존재 여부 (EXISTS / NOT EXISTS)</div>
-    <p class='text-slate-600 mb-3 break-keep'>다른 테이블에 조건을 만족하는 연관 데이터가 존재하는지(True/False) 논리적 판별을 할 때 사용합니다. 데이터의 존재 유무만 확인하므로 복잡한 연산 없이 처리 속도가 매우 빠릅니다.</p>
-    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 주문 이력이 최소 1건 이상 존재하는 고객만 찾기</div>
-    <div class='bg-slate-800 text-blue-300 p-4 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE EXISTS 
-  (SELECT 1 
-   FROM orders o 
-   WHERE o.cust_id = c.cust_id)</div>
-  </div>
-  <div>
-    <div class='font-black text-lg text-slate-800 mb-1'>상황 C. 단일 값과의 비교 필터링</div>
-    <p class='text-slate-600 mb-3 break-keep'>집계 함수(AVG, MAX, MIN 등)를 통해 도출된 단일 값을 기준으로, 그 값보다 크거나 작은 데이터를 필터링할 때 사용합니다.</p>
-    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 전사 평균 급여보다 급여를 많이 받는 직원 찾기</div>
-    <div class='bg-slate-800 text-blue-300 p-4 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE salary > 
-  (SELECT AVG(salary) 
-   FROM employees)</div>
+  <div class='bg-slate-50 p-4 rounded-xl border border-slate-200'>
+    <div class='font-bold text-slate-800 mb-2'>👉 (상황 B) 단일 값 비교 (>, <) : 전사 평균 급여보다 급여를 많이 받는 직원 찾기</div>
+    <div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE salary > 
+  (SELECT AVG(salary) FROM employees)</div>
   </div>
 </div>
 
-[4. FROM 절 서브쿼리 (인라인 뷰) 개념]
-FROM 절 서브쿼리의 핵심은 '실재하지 않는 가상의 테이블을 메모리 상에 임시로 만들어내어, 새로운 데이터 소스로 활용하는 것'입니다.
+[3. FROM 절 서브쿼리 (인라인 뷰)]
+실재하지 않는 가상의 테이블을 메모리 상에 임시로 만들어내어, 새로운 데이터 소스로 활용하는 방법입니다. 데이터베이스에 물리적인 테이블을 새로 만들지 않더라도, 내가 원하는 형태로 1차 가공한 결과를 임시 테이블처럼 쓸 수 있게 해줍니다.
 
-데이터베이스에 물리적인 테이블을 새로 만들지 않더라도,
-내가 원하는 형태로 1차 가공한 결과를 임시 테이블(인라인 뷰)처럼 쓸 수 있게 해줍니다.
-
-[5. FROM 절 서브쿼리를 사용하는 상황]
-<div class='mt-4 space-y-6'>
-  <div>
-    <div class='font-black text-lg text-slate-800 mb-1'>상황 A. SQL 실행 순서의 한계 극복 (다단계 가공)</div>
-    <p class='text-slate-600 mb-3 break-keep'>SQL은 내부적인 실행 순서(FROM → WHERE → GROUP BY → SELECT)가 정해져 있습니다. 따라서 SELECT 절에서 새롭게 계산하여 만든 컬럼을 동일한 레벨의 WHERE 절에서 필터 조건으로 쓸 수 없는 모순이 발생합니다. 이를 극복하기 위해 사용합니다.</p>
-    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) SELECT에서 계산한 총액(total)이 1000 이상인 것만 필터링하기</div>
-    <div class='bg-slate-800 text-blue-300 p-4 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * FROM 
-  (SELECT id, price * qty AS total 
-   FROM orders) 
+<div class='mt-3 space-y-4'>
+  <div class='bg-slate-50 p-4 rounded-xl border border-slate-200'>
+    <div class='font-bold text-slate-800 mb-2'>👉 (상황 A) 다단계 가공 : SELECT에서 계산한 총액(total)이 1000 이상인 것만 필터링하기</div>
+    <div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * FROM 
+  (SELECT id, price * qty AS total FROM orders) 
 WHERE total > 1000</div>
   </div>
-  <div>
-    <div class='font-black text-lg text-slate-800 mb-1'>상황 B. 조인(JOIN) 전 사전 집계 및 데이터 경량화</div>
-    <p class='text-slate-600 mb-3 break-keep'>대용량 테이블을 그대로 조인하면 연산량이 폭발하거나 중복 데이터가 늘어나는 카테시안 곱(Cartesian Product) 현상이 생길 수 있습니다. 이를 막기 위해 FROM 절 안에서 서브쿼리로 데이터를 먼저 요약하고 가볍게 만든 뒤에 조인을 수행합니다.</p>
-    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 직원 테이블과 부서별 평균 급여 테이블을 조인하기</div>
-    <div class='bg-slate-800 text-blue-300 p-4 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * FROM employees e 
+  <div class='bg-slate-50 p-4 rounded-xl border border-slate-200'>
+    <div class='font-bold text-slate-800 mb-2'>👉 (상황 B) 조인 전 데이터 경량화 : 직원 테이블과 부서별 평균 급여 테이블 조인하기</div>
+    <div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * FROM employees e 
 JOIN 
-  (SELECT dept_id, AVG(salary) AS avg_sal 
-   FROM employees 
-   GROUP BY dept_id) a 
+  (SELECT dept_id, AVG(salary) AS avg_sal FROM employees GROUP BY dept_id) a 
 ON e.dept_id = a.dept_id</div>
   </div>
-  <div>
-    <div class='font-black text-lg text-slate-800 mb-1'>상황 C. Top-N 쿼리 및 윈도우 함수 필터링</div>
-    <p class='text-slate-600 mb-3 break-keep'>데이터에 순위(ROW_NUMBER, RANK 등)를 매긴 뒤, "상위 3명만 뽑아라"와 같은 조건을 걸 때 사용합니다. 문법 규칙상 윈도우 함수는 WHERE 절에 직접 들어갈 수 없기 때문에 서브쿼리가 강제됩니다.</p>
-    <div class='font-bold text-blue-600 mb-2 text-sm'>👉 (예시) 부서별 급여 1등 직원만 추출하기</div>
-    <div class='bg-slate-800 text-blue-300 p-4 rounded-2xl font-mono text-base leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * FROM 
-  (SELECT name, ROW_NUMBER() OVER(PARTITION BY dept_id ORDER BY salary DESC) AS rn 
-   FROM employees) 
-WHERE rn = 1</div>
-  </div>
-</div>`,
+</div>
+
+💡 [참고: LIMIT 절]
+결과로 출력되는 행의 개수를 강제로 제한하는 구문입니다. 쿼리의 가장 마지막에 \`LIMIT 숫자\` 형태로 작성하며, 주로 가장 크거나 작은 단일 값을 뽑아낼 때 ORDER BY와 함께 쓰입니다.
+(예: \`ORDER BY salary DESC LIMIT 1\` -> 급여 1등 1명만 출력)`,
             checkpoint: "서브쿼리가 단일 값(스칼라)을 반환하는지, 여러 행(리스트)을 반환하는지 구분해야 합니다.\n여러 개의 값을 반환할 때는 '=' 연산자 대신 'IN' 연산자를 써야 에러가 발생하지 않습니다.",
             targetTable: "employees",
             exampleData: { 
@@ -942,7 +956,7 @@ WHERE rn = 1</div>
             grammar: "ROW_NUMBER()",
             subtitle: "최신 데이터 1건 선별의 기술",
             theory: "[GROUP BY + MAX의 치명적 한계]\n\"각 유저별로 가장 최근에 접속한 날짜의 '기기(Device) 정보'\"를 알고 싶다면?\nGROUP BY로 MAX(날짜)는 구할 수 있지만, 그 날짜에 해당하는 다른 컬럼(기기 정보 등)은 함께 가져올 수 없다는 치명적인 한계가 있습니다.\n\n[ROW_NUMBER() OVER() 의 마법]\n데이터에 조건별로 '순위표(등수)' 컬럼을 새로 만들어 원래 행의 모든 정보를 보존합니다.\n- PARTITION BY: 그룹화할 기준 (예: 유저별로 1등부터 매기기)\n- ORDER BY: 순위를 매길 기준 (예: 시간순 DESC)\n(예: SELECT *, ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) AS rn FROM table)\n\n[순위표를 활용한 1등 데이터 필터링]\n생성된 순위표에서 \"1등만 가져와라\"라고 하려면 어떻게 해야 할까요?\n윈도우 함수는 WHERE 절에 직접 쓸 수 없기 때문에, 앞서 배운 FROM 절 서브쿼리(인라인 뷰)로 한 번 감싸준 뒤 밖에서 WHERE rn = 1 로 필터링합니다.",
-            checkpoint: "ORDER BY의 정렬 방향(DESC/ASC)이 결과의 핵심입니다.\n'가장 최신'을 원한다면 반드시 DESC인지 확인하세요.",
+            checkpoint: "PARTITION BY는 그룹을 나누지 않을 거라면 생략이 가능하지만, ORDER BY는 순번을 매기기 위해 반드시 필요합니다(생략 불가). \n\n⚠️ 주의: 현재 사용하는 브라우저 가상 엔진(Alasql)의 고질적인 버그로 인해, OVER 내부에서 DESC 정렬을 사용하면 순번이 오름차순으로 역산되어 나오는 현상이 있습니다. (실제 빅쿼리 환경에서는 정상 작동합니다)",
             targetTable: "login_log",
             exampleData: { "login_log": [{ user: 'A', time: '10:00' }, { user: 'A', time: '12:00' }] },
             exerciseData: { "login_log": [
@@ -956,7 +970,7 @@ WHERE rn = 1</div>
             example: "SELECT * \nFROM (\n  SELECT \n    *, \n    ROW_NUMBER() OVER(\n      PARTITION BY user \n      ORDER BY time DESC\n    ) AS rn\n  FROM login_log\n)\nWHERE rn = 1\n;",
             mockResult: [{ user: 'A', time: '12:00', rn: 1 }],
             exercises: [
-              { id: 1, goal: "[상황: 단순 순번 부여]\n전체 접속 로그(login_log)에 아무런 기준 없이 단순히 번호(rn)를 매겨\n전체 데이터 규모를 파악하세요.", target: "rn 포함", answer: "SELECT *, ROW_NUMBER() OVER() AS rn FROM login_log;", res: [{user:'A', time:'10:00', device:'PC', rn:1},{user:'A', time:'12:00', device:'Mobile', rn:2},{user:'B', time:'11:00', device:'PC', rn:3},{user:'B', time:'13:00', device:'Mobile', rn:4}], hint: "ROW_NUMBER() OVER() AS rn" },
+              { id: 1, goal: "[상황: 단순 순번 부여]\n전체 접속 로그(login_log)에 대해 파티션을 나누지 말고, 유저(user) 이름 순(오름차순 ASC)으로 정렬하여 단순히 번호(rn)를 매겨 전체 규모를 파악하세요.", target: "rn 포함", answer: "SELECT *, ROW_NUMBER() OVER(ORDER BY user ASC) AS rn FROM login_log;", res: [{user:'A', time:'10:00', device:'PC', rn:1},{user:'A', time:'12:00', device:'Mobile', rn:2},{user:'B', time:'11:00', device:'PC', rn:3},{user:'B', time:'13:00', device:'Mobile', rn:4}], hint: "ROW_NUMBER() OVER(ORDER BY user ASC) AS rn" },
               { id: 2, goal: "[상황: 최신 순번 부여]\n유저(user)별 가장 최근 접속이 1번이 되도록, 유저 파티션과 시간 내림차순 정렬을 적용하여\n번호(rn)를 매겨보세요.", target: "rn 포함", answer: "SELECT *, ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) AS rn FROM login_log;", res: [{user:'A', time:'12:00', device:'Mobile', rn:1},{user:'A', time:'10:00', device:'PC', rn:2},{user:'B', time:'13:00', device:'Mobile', rn:1},{user:'B', time:'11:00', device:'PC', rn:2}], hint: "PARTITION BY user ORDER BY time DESC 를 사용하세요." },
               { id: 3, goal: "[상황: 최신 접속 로그 추출]\n보안팀에서 유저별로 가장 마지막(최근)에 접속한 단 1건의 로그(*)만 필요하다고 합니다.\n서브쿼리와 ROW_NUMBER를 사용해 1등(rn=1) 데이터만 추출하세요.", target: "전체 컬럼", answer: "SELECT * FROM (SELECT *, ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) AS rn FROM login_log) WHERE rn = 1;", res: [{user:'A', time:'12:00', device:'Mobile', rn:1},{user:'B', time:'13:00', device:'Mobile', rn:1}], hint: "FROM절 서브쿼리로 rn을 생성한 후, 밖에서 WHERE rn = 1 로 필터링합니다." }
             ]
