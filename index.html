@@ -206,7 +206,6 @@
           let isDataCorrect = false;
           let showSuccessMessageInsteadOfData = false;
           
-          // 텍스트 완전 일치 (리터럴 텍스트 대소문자까지 모두 일치할 경우에만 우회 통과 허용)
           let isStringCorrect = false;
           if (normalizedInput === normalizedAnswer || normalizedInput === normalizedAnswer.replace(/;$/, '').trim() || normalizedInput + ';' === normalizedAnswer) {
               const getLiterals = (str) => {
@@ -228,7 +227,6 @@
                   .replace(/`([^`]+)`/g, (match, p1) => { const parts = p1.split('.'); return parts[parts.length - 1]; })
                   .replace(/INT64/gi, 'INT');
 
-              // 가상 엔진(Alasql) 윈도우 함수 버그 우회
               sqlForAlasql = sqlForAlasql.replace(/OVER\s*\(([^)]+)\)/gi, (match, inner) => {
                   return `OVER(${inner.replace(/[a-zA-Z0-9_`]+\./g, '')})`;
               });
@@ -262,7 +260,10 @@
               });
 
               const selectMatch = sqlForAlasql.match(/SELECT\s+(.+?)\s+FROM/is);
+              let selectItems = [];
               if (selectMatch && !sqlForAlasql.toUpperCase().includes('SELECT * FROM (SELECT')) {
+                  selectItems = selectMatch[1].split(/,(?![^\(]*\))/).map(s => s.trim());
+                  
                   sqlForAlasql = sqlForAlasql.replace(/GROUP\s+BY\s+([\d\s,]+?)(\s*HAVING|\s*ORDER\s+BY|\s*LIMIT|\s*\)|\s*;|\s*$)/gis, (match, indicesStr, rest, offset, string) => {
                       const upToMatch = string.substring(0, offset);
                       const selectMatches = [...upToMatch.matchAll(/SELECT\s+(.+?)\s+FROM/gis)];
@@ -316,6 +317,39 @@
               
               executedData = alasql(sqlForAlasql);
               
+              // [버그 수정] ROW_NUMBER() OVER(ORDER BY ... DESC) 가상 엔진 버그 수동 교정
+              if (executedData && Array.isArray(executedData)) {
+                  const rnMatch = sqlForAlasql.match(/ROW_NUMBER\(\)\s*OVER\s*\(\s*(?:PARTITION\s+BY\s+([a-zA-Z0-9_`]+)\s+)?ORDER\s+BY\s+([a-zA-Z0-9_`]+)(?:\s+(DESC|ASC))?\s*\)(?:\s*AS\s+([a-zA-Z0-9_`]+))?/i);
+                  if (rnMatch && executedData.length > 0) {
+                      const partitionCol = rnMatch[1] ? rnMatch[1].replace(/`/g, '') : null;
+                      const orderCol = rnMatch[2].replace(/`/g, '');
+                      const isDesc = rnMatch[3] && rnMatch[3].toUpperCase() === 'DESC';
+                      const rnAlias = rnMatch[4] ? rnMatch[4].replace(/`/g, '') : 'rn';
+                      
+                      if (executedData[0].hasOwnProperty(rnAlias)) {
+                          let groups = {};
+                          executedData.forEach(row => {
+                              let pVal = partitionCol ? row[partitionCol] : 'all';
+                              if (!groups[pVal]) groups[pVal] = [];
+                              groups[pVal].push(row);
+                          });
+                          
+                          Object.keys(groups).forEach(k => {
+                              groups[k].sort((a, b) => {
+                                  let valA = a[orderCol];
+                                  let valB = b[orderCol];
+                                  if (valA === valB) return 0;
+                                  if (isDesc) return valA > valB ? -1 : 1;
+                                  return valA > valB ? 1 : -1;
+                              });
+                              groups[k].forEach((row, idx) => {
+                                  row[rnAlias] = idx + 1;
+                              });
+                          });
+                      }
+                  }
+              }
+
               if (executedData && currentEx.res && executedData.length === currentEx.res.length) {
                   if (normalizedAnswer.includes('create or replace table') && !normalizedInput.includes('create or replace table')) {
                       isDataCorrect = false;
@@ -460,13 +494,13 @@
                                     <div className="text-sm font-black text-slate-500 mb-3 flex items-center gap-2"><Icon name="table" size={16}/> 영업 테이블</div>
                                     <table className="w-full text-sm text-center border-collapse border border-slate-200 shadow-sm rounded-lg overflow-hidden hidden md:table">
                                         <thead>
-                                            <tr className="bg-slate-50"><th className="border border-slate-200 p-2 text-slate-600">채널</th><th className="border border-slate-200 p-2 bg-yellow-100 text-rose-600 font-black">고객ID (키값)</th><th className="border border-slate-200 p-2 text-slate-600">상품</th></tr>
+                                            <tr className="bg-slate-50"><th className="border border-slate-200 p-2 bg-yellow-100 text-rose-600 font-black">고객ID (키값)</th><th className="border border-slate-200 p-2 text-slate-600">채널</th><th className="border border-slate-200 p-2 text-slate-600">상품</th></tr>
                                         </thead>
                                         <tbody className="bg-white">
-                                            <tr><td className="border border-slate-200 p-2">대리점</td><td className="border border-slate-200 p-2 font-mono">001</td><td className="border border-slate-200 p-2">TV</td></tr>
-                                            <tr><td className="border border-slate-200 p-2">대리점</td><td className="border border-slate-200 p-2 font-mono">002</td><td className="border border-slate-200 p-2">냉장고</td></tr>
-                                            <tr><td className="border border-slate-200 p-2">온라인</td><td className="border border-slate-200 p-2 font-mono">003</td><td className="border border-slate-200 p-2">에어컨</td></tr>
-                                            <tr><td className="border border-slate-200 p-2">직영점</td><td className="border border-slate-200 p-2 font-mono">004</td><td className="border border-slate-200 p-2">TV</td></tr>
+                                            <tr><td className="border border-slate-200 p-2 font-mono">001</td><td className="border border-slate-200 p-2">대리점</td><td className="border border-slate-200 p-2">TV</td></tr>
+                                            <tr><td className="border border-slate-200 p-2 font-mono">002</td><td className="border border-slate-200 p-2">대리점</td><td className="border border-slate-200 p-2">냉장고</td></tr>
+                                            <tr><td className="border border-slate-200 p-2 font-mono">003</td><td className="border border-slate-200 p-2">온라인</td><td className="border border-slate-200 p-2">에어컨</td></tr>
+                                            <tr><td className="border border-slate-200 p-2 font-mono">004</td><td className="border border-slate-200 p-2">직영점</td><td className="border border-slate-200 p-2">TV</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -759,7 +793,7 @@
             title: "테이블 합치기",
             grammar: "JOIN",
             subtitle: "분산된 데이터의 결합과 1:N 관계",
-            theory: "서로 다른 테이블에 흩어진 정보를 공통된 연결 고리(ID 등)를 기준으로 하나로 모읍니다.\n\n[사용 방법]\nSELECT \n  a.컬럼, \n  b.컬럼 \nFROM 테이블A AS a\nLEFT JOIN 테이블B AS b\n  ON a.공통키 = b.공통키\n;\n\n[JOIN 개념 이해하기]\n두 개의 테이블을 키값(고객ID 등) 기준으로 합치는 작업입니다.\n<div class='flex flex-col gap-4 my-6'><div class='flex flex-wrap gap-6 justify-center'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-center border-collapse w-64'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='3' class='px-4 py-2 font-black text-slate-700 bg-slate-200/50'>영업 테이블</th></tr><tr><th class='border-r border-slate-200 px-2 py-2 font-bold text-slate-500'>채널</th><th class='border-r border-slate-200 px-2 py-2 font-bold bg-yellow-100 text-rose-600'>고객ID (키값)</th><th class='px-2 py-2 font-bold text-slate-500'>상품</th></tr></thead><tbody class='bg-white'><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1 font-mono'>001</td><td class='px-2 py-1'>TV</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1 font-mono'>002</td><td class='px-2 py-1'>냉장고</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1'>온라인</td><td class='border-r border-slate-100 px-2 py-1 font-mono'>003</td><td class='px-2 py-1'>에어컨</td></tr><tr><td class='border-r border-slate-100 px-2 py-1'>직영점</td><td class='border-r border-slate-100 px-2 py-1 font-mono'>004</td><td class='px-2 py-1'>TV</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-center border-collapse w-64'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='3' class='px-4 py-2 font-black text-slate-700 bg-slate-200/50'>고객정보 테이블</th></tr><tr><th class='border-r border-slate-200 px-2 py-2 font-bold bg-yellow-100 text-rose-600'>고객ID (키값)</th><th class='border-r border-slate-200 px-2 py-2 font-bold text-slate-500'>성함</th><th class='px-2 py-2 font-bold text-slate-500'>지역</th></tr></thead><tbody class='bg-white'><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>001</td><td class='border-r border-slate-100 px-2 py-1'>홍길동</td><td class='px-2 py-1'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>002</td><td class='border-r border-slate-100 px-2 py-1'>신사임당</td><td class='px-2 py-1'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>003</td><td class='border-r border-slate-100 px-2 py-1'>강감찬</td><td class='px-2 py-1'>부산</td></tr><tr><td class='border-r border-slate-100 px-2 py-1 font-mono'>004</td><td class='border-r border-slate-100 px-2 py-1'>짱구</td><td class='px-2 py-1'>강릉</td></tr></tbody></table></div></div><div class='flex justify-center text-blue-500 my-2 font-bold tracking-widest text-sm'>▼ 공통 키(고객ID)를 기준으로 결합 ▼</div><div class='border border-blue-200 rounded-2xl overflow-hidden shadow-sm mx-auto w-full max-w-3xl'><table class='w-full text-sm text-center border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th colspan='5' class='px-4 py-2 font-black text-blue-800 bg-blue-100'>종합 테이블 (결과)</th></tr><tr><th class='border-r border-blue-100 px-2 py-2 font-bold bg-yellow-100 text-rose-600'>고객ID</th><th class='border-r border-blue-100 px-2 py-2 font-bold text-blue-800'>채널</th><th class='border-r border-blue-100 px-2 py-2 font-bold text-blue-800'>상품</th><th class='border-r border-blue-100 px-2 py-2 font-bold text-blue-800'>성함</th><th class='px-2 py-2 font-bold text-blue-800'>지역</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>001</td><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1'>TV</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>홍길동</td><td class='px-2 py-1 font-bold text-blue-600'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>002</td><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1'>냉장고</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>신사임당</td><td class='px-2 py-1 font-bold text-blue-600'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>003</td><td class='border-r border-slate-100 px-2 py-1'>온라인</td><td class='border-r border-slate-100 px-2 py-1'>에어컨</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>강감찬</td><td class='px-2 py-1 font-bold text-blue-600'>부산</td></tr><tr><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>004</td><td class='border-r border-slate-100 px-2 py-1'>직영점</td><td class='border-r border-slate-100 px-2 py-1'>TV</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>짱구</td><td class='px-2 py-1 font-bold text-blue-600'>강릉</td></tr></tbody></table></div></div>\n\n[JOIN의 1:N 뻥튀기(Fan-out) 현상]\nA테이블에 아이디가 1개인데, B테이블에 같은 아이디가 3개 있다면? JOIN 결과는 3줄로 늘어납니다. 데이터 분석 시 가장 흔한 실수이므로, 반드시 1:1 관계인지 1:N 관계인지 확인해야 합니다.\n\n[JOIN 유형별 실제 예시]\n<div class='flex flex-wrap gap-6 my-6'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-48'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>주문내역 (A)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>주문ID</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>유저</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='px-4 py-2 text-center font-bold text-blue-600'>유저A</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='px-4 py-2 text-center text-slate-600'>유저B</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-56'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>접속기록 (B)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>유저</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>유저C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div></div>\n1. LEFT JOIN (A의 모든 데이터 보존)\n유저A의 접속기록이 2개이므로 주문1이 2줄로 뻥튀기됩니다. B에 없는 유저B의 접속기록은 NULL이 됩니다.\n<div class='my-4 border border-blue-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>주문ID</th><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-blue-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr></tbody></table></div>\n2. INNER JOIN (양쪽에 모두 있는 교집합)\n양쪽에 모두 존재하는 유저A의 데이터만 뻥튀기되어 남습니다.\n<div class='my-4 border border-emerald-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-emerald-50 border-b border-emerald-100'><tr><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>주문ID</th><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-emerald-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr></tbody></table></div>\n3. FULL OUTER JOIN (합집합)\n어느 한쪽에만 있는 유저B와 유저C의 데이터도 모두 빈칸(NULL)을 채워 남깁니다.\n<div class='my-4 border border-purple-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-purple-50 border-b border-purple-100'><tr><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>주문ID</th><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-purple-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div>",
+            theory: "서로 다른 테이블에 흩어진 정보를 공통된 연결 고리(ID 등)를 기준으로 하나로 모읍니다.\n\n[사용 방법]\nSELECT \n  a.컬럼, \n  b.컬럼 \nFROM 테이블A AS a\nLEFT JOIN 테이블B AS b\n  ON a.공통키 = b.공통키\n;\n\n[JOIN 개념 이해하기]\n두 개의 테이블을 키값(고객ID 등) 기준으로 합치는 작업입니다.\n<div class='flex flex-col gap-4 my-6'><div class='flex flex-wrap gap-6 justify-center'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-center border-collapse w-64'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='3' class='px-4 py-2 font-black text-slate-700 bg-slate-200/50'>영업 테이블</th></tr><tr><th class='border-r border-slate-200 px-2 py-2 font-bold bg-yellow-100 text-rose-600'>고객ID (키값)</th><th class='border-r border-slate-200 px-2 py-2 font-bold text-slate-500'>채널</th><th class='px-2 py-2 font-bold text-slate-500'>상품</th></tr></thead><tbody class='bg-white'><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>001</td><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='px-2 py-1'>TV</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>002</td><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='px-2 py-1'>냉장고</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>003</td><td class='border-r border-slate-100 px-2 py-1'>온라인</td><td class='px-2 py-1'>에어컨</td></tr><tr><td class='border-r border-slate-100 px-2 py-1 font-mono'>004</td><td class='border-r border-slate-100 px-2 py-1'>직영점</td><td class='px-2 py-1'>TV</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-center border-collapse w-64'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='3' class='px-4 py-2 font-black text-slate-700 bg-slate-200/50'>고객정보 테이블</th></tr><tr><th class='border-r border-slate-200 px-2 py-2 font-bold bg-yellow-100 text-rose-600'>고객ID (키값)</th><th class='border-r border-slate-200 px-2 py-2 font-bold text-slate-500'>성함</th><th class='px-2 py-2 font-bold text-slate-500'>지역</th></tr></thead><tbody class='bg-white'><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>001</td><td class='border-r border-slate-100 px-2 py-1'>홍길동</td><td class='px-2 py-1'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>002</td><td class='border-r border-slate-100 px-2 py-1'>신사임당</td><td class='px-2 py-1'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono'>003</td><td class='border-r border-slate-100 px-2 py-1'>강감찬</td><td class='px-2 py-1'>부산</td></tr><tr><td class='border-r border-slate-100 px-2 py-1 font-mono'>004</td><td class='border-r border-slate-100 px-2 py-1'>짱구</td><td class='px-2 py-1'>강릉</td></tr></tbody></table></div></div><div class='flex justify-center text-blue-500 my-2 font-bold tracking-widest text-sm'>▼ 공통 키(고객ID)를 기준으로 결합 ▼</div><div class='border border-blue-200 rounded-2xl overflow-hidden shadow-sm mx-auto w-full max-w-3xl'><table class='w-full text-sm text-center border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th colspan='5' class='px-4 py-2 font-black text-blue-800 bg-blue-100'>종합 테이블 (결과)</th></tr><tr><th class='border-r border-blue-100 px-2 py-2 font-bold bg-yellow-100 text-rose-600'>고객ID</th><th class='border-r border-blue-100 px-2 py-2 font-bold text-blue-800'>채널</th><th class='border-r border-blue-100 px-2 py-2 font-bold text-blue-800'>상품</th><th class='border-r border-blue-100 px-2 py-2 font-bold text-blue-800'>성함</th><th class='px-2 py-2 font-bold text-blue-800'>지역</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>001</td><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1'>TV</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>홍길동</td><td class='px-2 py-1 font-bold text-blue-600'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>002</td><td class='border-r border-slate-100 px-2 py-1'>대리점</td><td class='border-r border-slate-100 px-2 py-1'>냉장고</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>신사임당</td><td class='px-2 py-1 font-bold text-blue-600'>서울</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>003</td><td class='border-r border-slate-100 px-2 py-1'>온라인</td><td class='border-r border-slate-100 px-2 py-1'>에어컨</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>강감찬</td><td class='px-2 py-1 font-bold text-blue-600'>부산</td></tr><tr><td class='border-r border-slate-100 px-2 py-1 font-mono bg-yellow-50'>004</td><td class='border-r border-slate-100 px-2 py-1'>직영점</td><td class='border-r border-slate-100 px-2 py-1'>TV</td><td class='border-r border-slate-100 px-2 py-1 font-bold text-blue-600'>짱구</td><td class='px-2 py-1 font-bold text-blue-600'>강릉</td></tr></tbody></table></div></div>\n\n[JOIN의 1:N 뻥튀기(Fan-out) 현상]\nA테이블에 아이디가 1개인데, B테이블에 같은 아이디가 3개 있다면? JOIN 결과는 3줄로 늘어납니다. 데이터 분석 시 가장 흔한 실수이므로, 반드시 1:1 관계인지 1:N 관계인지 확인해야 합니다.\n\n[JOIN 유형별 실제 예시]\n<div class='flex flex-wrap gap-6 my-6'><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-48'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>주문내역 (A)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>주문ID</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>유저</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='px-4 py-2 text-center font-bold text-blue-600'>유저A</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='px-4 py-2 text-center text-slate-600'>유저B</td></tr></tbody></table></div><div class='border border-slate-200 rounded-2xl overflow-hidden shadow-sm'><table class='text-sm text-left border-collapse w-56'><thead class='bg-slate-100 border-b border-slate-200'><tr><th colspan='2' class='px-4 py-2 font-black text-slate-700 text-center bg-slate-200/50'>접속기록 (B)</th></tr><tr><th class='border-r border-slate-200 px-4 py-2 font-bold text-slate-500 text-center'>유저</th><th class='px-4 py-2 font-bold text-slate-500 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>유저A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>유저C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div></div>\n1. LEFT JOIN (A의 모든 데이터 보존)\n유저A의 접속기록이 2개이므로 주문1이 2줄로 뻥튀기됩니다. B에 없는 유저B의 접속기록은 NULL이 됩니다.\n<div class='my-4 border border-blue-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-blue-50 border-b border-blue-100'><tr><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>주문ID</th><th class='border-r border-blue-100 px-4 py-2 font-bold text-blue-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-blue-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr></tbody></table></div>\n2. INNER JOIN (양쪽에 모두 있는 교집합)\n양쪽에 모두 존재하는 유저A의 데이터만 뻥튀기되어 남습니다.\n<div class='my-4 border border-emerald-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-emerald-50 border-b border-emerald-100'><tr><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>주문ID</th><th class='border-r border-emerald-100 px-4 py-2 font-bold text-emerald-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-emerald-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr></tbody></table></div>\n3. FULL OUTER JOIN (합집합)\n어느 한쪽에만 있는 유저B와 유저C의 데이터도 모두 빈칸(NULL)을 채워 남깁니다.\n<div class='my-4 border border-purple-200 rounded-2xl overflow-hidden shadow-sm max-w-lg'><table class='w-full text-sm border-collapse bg-white'><thead class='bg-purple-50 border-b border-purple-100'><tr><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>주문ID</th><th class='border-r border-purple-100 px-4 py-2 font-bold text-purple-800 text-center'>유저</th><th class='px-4 py-2 font-bold text-purple-800 text-center'>접속</th></tr></thead><tbody><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오전</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문1</td><td class='border-r border-slate-100 px-4 py-2 text-center font-bold text-blue-600'>A</td><td class='px-4 py-2 text-center'>오후</td></tr><tr class='border-b border-slate-100'><td class='border-r border-slate-100 px-4 py-2 text-center'>주문2</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>B</td><td class='px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td></tr><tr><td class='border-r border-slate-100 px-4 py-2 text-center font-black text-rose-500 bg-rose-50'>NULL</td><td class='border-r border-slate-100 px-4 py-2 text-center text-slate-600'>C</td><td class='px-4 py-2 text-center'>야간</td></tr></tbody></table></div>",
             checkpoint: "JOIN 시 기준 키에 중복이 있으면 데이터가 뻥튀기(Fan-out)될 수 있습니다.\n테이블 간의 관계(키가 유일한지)를 먼저 파악하세요.",
             targetTable: "orders & users",
             exampleData: { 
@@ -852,49 +886,49 @@
             subtitle: "질문 안의 질문으로 복잡한 조건 해결하기",
             theory: `[1. 서브쿼리 개념]
 데이터를 분석하다 보면 하나의 쿼리만으로는 원하는 결과를 얻기 어려울 때가 있습니다.
-
 이때 쿼리 안쪽에 또 다른 쿼리를 중첩하여 실행하는 방식을 '서브쿼리(Subquery)'라고 부릅니다.
-
 서브쿼리는 반드시 괄호 \`()\`로 감싸야 하며, 시스템은 안쪽에 있는 서브쿼리를 먼저 실행한 후 그 결과를 바깥쪽 메인 쿼리에 전달합니다.
 
-[2. WHERE 절 서브쿼리]
+[2. WHERE 절 서브쿼리 개념]
 단순한 연산이 아니라, 특정 조건에 맞는 여러 개의 데이터 목록(집합)에 현재 행의 값이 포함되는지 확인하거나, 단일 값과 비교하여 필터링할 때 주로 사용합니다.
 
-<div class='mt-3 space-y-4'>
-  <div class='bg-slate-50 p-4 rounded-xl border border-slate-200'>
-    <div class='font-bold text-slate-800 mb-2'>👉 (상황 A) 포함 여부 확인 (IN) : 서울에 위치한 부서에서 근무하는 직원만 찾기</div>
-    <div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE dept_id IN 
-  (SELECT dept_id FROM departments WHERE location = 'Seoul')</div>
-  </div>
-  <div class='bg-slate-50 p-4 rounded-xl border border-slate-200'>
-    <div class='font-bold text-slate-800 mb-2'>👉 (상황 B) 단일 값 비교 (>, <) : 전사 평균 급여보다 급여를 많이 받는 직원 찾기</div>
-    <div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>WHERE salary > 
-  (SELECT AVG(salary) FROM employees)</div>
-  </div>
-</div>
+[3. WHERE 절 서브쿼리를 사용하는 상황]
+👉 상황 A. 데이터 집합 포함 여부 (IN / NOT IN)
+수학적 단일 값 연산이 아니라, 특정 조건에 맞는 여러 개의 데이터 목록(집합)에 현재 행의 값이 포함되는지 확인할 때 주로 사용합니다.
+(예시) 서울에 위치한 부서에서 근무하는 직원만 찾기
+WHERE dept_id IN (SELECT dept_id FROM departments WHERE location = 'Seoul')
 
-[3. FROM 절 서브쿼리 (인라인 뷰)]
+👉 상황 B. 연관 데이터 존재 여부 (EXISTS / NOT EXISTS)
+다른 테이블에 조건을 만족하는 연관 데이터가 존재하는지(True/False) 논리적 판별을 할 때 사용합니다. 데이터의 존재 유무만 확인하므로 복잡한 연산 없이 처리 속도가 매우 빠릅니다.
+(예시) 주문 이력이 최소 1건 이상 존재하는 고객만 찾기
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.cust_id = c.cust_id)
+
+👉 상황 C. 단일 값과의 비교 필터링
+집계 함수(AVG, MAX, MIN 등)를 통해 도출된 단일 값을 기준으로, 그 값보다 크거나 작은 데이터를 필터링할 때 사용합니다.
+(예시) 전사 평균 급여보다 급여를 많이 받는 직원 찾기
+WHERE salary > (SELECT AVG(salary) FROM employees)
+
+[4. FROM 절 서브쿼리 (인라인 뷰) 개념]
 실재하지 않는 가상의 테이블을 메모리 상에 임시로 만들어내어, 새로운 데이터 소스로 활용하는 방법입니다. 데이터베이스에 물리적인 테이블을 새로 만들지 않더라도, 내가 원하는 형태로 1차 가공한 결과를 임시 테이블처럼 쓸 수 있게 해줍니다.
 
-<div class='mt-3 space-y-4'>
-  <div class='bg-slate-50 p-4 rounded-xl border border-slate-200'>
-    <div class='font-bold text-slate-800 mb-2'>👉 (상황 A) 다단계 가공 : SELECT에서 계산한 총액(total)이 1000 이상인 것만 필터링하기</div>
-    <div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * FROM 
-  (SELECT id, price * qty AS total FROM orders) 
-WHERE total > 1000</div>
-  </div>
-  <div class='bg-slate-50 p-4 rounded-xl border border-slate-200'>
-    <div class='font-bold text-slate-800 mb-2'>👉 (상황 B) 조인 전 데이터 경량화 : 직원 테이블과 부서별 평균 급여 테이블 조인하기</div>
-    <div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * FROM employees e 
-JOIN 
-  (SELECT dept_id, AVG(salary) AS avg_sal FROM employees GROUP BY dept_id) a 
-ON e.dept_id = a.dept_id</div>
-  </div>
-</div>
+[5. FROM 절 서브쿼리를 사용하는 상황]
+👉 상황 A. SQL 실행 순서의 한계 극복 (다단계 가공)
+SQL은 내부적인 실행 순서(FROM → WHERE → GROUP BY → SELECT)가 정해져 있습니다. 따라서 SELECT 절에서 새롭게 계산하여 만든 컬럼을 동일한 레벨의 WHERE 절에서 필터 조건으로 쓸 수 없는 모순이 발생합니다. 이를 극복하기 위해 사용합니다.
+(예시) SELECT에서 계산한 총액(total)이 1000 이상인 것만 필터링하기
+SELECT * FROM (SELECT id, price * qty AS total FROM orders) WHERE total > 1000
+
+👉 상황 B. 조인(JOIN) 전 사전 집계 및 데이터 경량화
+대용량 테이블을 그대로 조인하면 연산량이 폭발하거나 중복 데이터가 늘어나는 카테시안 곱(Cartesian Product) 현상이 생길 수 있습니다. 이를 막기 위해 FROM 절 안에서 서브쿼리로 데이터를 먼저 요약하고 가볍게 만든 뒤에 조인을 수행합니다.
+(예시) 직원 테이블과 부서별 평균 급여 테이블 조인하기
+SELECT * FROM employees e JOIN (SELECT dept_id, AVG(salary) AS avg_sal FROM employees GROUP BY dept_id) a ON e.dept_id = a.dept_id
+
+👉 상황 C. Top-N 쿼리 및 윈도우 함수 필터링
+데이터에 순위(ROW_NUMBER, RANK 등)를 매긴 뒤, "상위 3명만 뽑아라"와 같은 조건을 걸 때 사용합니다. 문법 규칙상 윈도우 함수는 WHERE 절에 직접 들어갈 수 없기 때문에 서브쿼리가 강제됩니다.
+(예시) 부서별 급여 1등 직원만 추출하기
+SELECT * FROM (SELECT name, ROW_NUMBER() OVER(PARTITION BY dept_id ORDER BY salary DESC) AS rn FROM employees) WHERE rn = 1
 
 💡 [참고: LIMIT 절]
-결과로 출력되는 행의 개수를 강제로 제한하는 구문입니다. 쿼리의 가장 마지막에 \`LIMIT 숫자\` 형태로 작성하며, 주로 가장 크거나 작은 단일 값을 뽑아낼 때 ORDER BY와 함께 쓰입니다.
-(예: \`ORDER BY salary DESC LIMIT 1\` -> 급여 1등 1명만 출력)`,
+결과로 출력되는 행의 개수를 강제로 제한하는 구문입니다. 쿼리의 가장 마지막에 \`LIMIT 숫자\` 형태로 작성하며, 주로 가장 크거나 작은 단일 값을 뽑아낼 때 ORDER BY와 함께 쓰입니다. (예: \`ORDER BY salary DESC LIMIT 1\` -> 급여 1등 1명만 출력)`,
             checkpoint: "서브쿼리가 단일 값(스칼라)을 반환하는지, 여러 행(리스트)을 반환하는지 구분해야 합니다.\n여러 개의 값을 반환할 때는 '=' 연산자 대신 'IN' 연산자를 써야 에러가 발생하지 않습니다.",
             targetTable: "employees",
             exampleData: { 
@@ -956,7 +990,7 @@ ON e.dept_id = a.dept_id</div>
             grammar: "ROW_NUMBER()",
             subtitle: "최신 데이터 1건 선별의 기술",
             theory: "[GROUP BY + MAX의 치명적 한계]\n\"각 유저별로 가장 최근에 접속한 날짜의 '기기(Device) 정보'\"를 알고 싶다면?\nGROUP BY로 MAX(날짜)는 구할 수 있지만, 그 날짜에 해당하는 다른 컬럼(기기 정보 등)은 함께 가져올 수 없다는 치명적인 한계가 있습니다.\n\n[ROW_NUMBER() OVER() 의 마법]\n데이터에 조건별로 '순위표(등수)' 컬럼을 새로 만들어 원래 행의 모든 정보를 보존합니다.\n- PARTITION BY: 그룹화할 기준 (예: 유저별로 1등부터 매기기)\n- ORDER BY: 순위를 매길 기준 (예: 시간순 DESC)\n(예: SELECT *, ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) AS rn FROM table)\n\n[순위표를 활용한 1등 데이터 필터링]\n생성된 순위표에서 \"1등만 가져와라\"라고 하려면 어떻게 해야 할까요?\n윈도우 함수는 WHERE 절에 직접 쓸 수 없기 때문에, 앞서 배운 FROM 절 서브쿼리(인라인 뷰)로 한 번 감싸준 뒤 밖에서 WHERE rn = 1 로 필터링합니다.",
-            checkpoint: "PARTITION BY는 그룹을 나누지 않을 거라면 생략이 가능하지만, ORDER BY는 순번을 매기기 위해 반드시 필요합니다(생략 불가). \n\n⚠️ 주의: 현재 사용하는 브라우저 가상 엔진(Alasql)의 고질적인 버그로 인해, OVER 내부에서 DESC 정렬을 사용하면 순번이 오름차순으로 역산되어 나오는 현상이 있습니다. (실제 빅쿼리 환경에서는 정상 작동합니다)",
+            checkpoint: "PARTITION BY는 그룹을 나누지 않을 거라면 생략이 가능하지만, ORDER BY는 순번을 매기기 위해 반드시 필요합니다(생략 불가).",
             targetTable: "login_log",
             exampleData: { "login_log": [{ user: 'A', time: '10:00' }, { user: 'A', time: '12:00' }] },
             exerciseData: { "login_log": [
