@@ -218,6 +218,12 @@
                   isStringCorrect = true;
               }
           }
+
+          // [초강력 문자열 매칭] - 띄어쓰기, 기호, 1=1 등 모두 무시하고 핵심 텍스트 구조가 맞으면 정답 처리
+          const superClean = str => str.toLowerCase().replace(/[^a-z0-9_]/g, '').replace(/11and/g, '').replace(/11/g, '');
+          if (superClean(input) === superClean(currentEx.answer)) {
+              isStringCorrect = true;
+          }
           
           try {
               const alasql = window.alasql;
@@ -323,7 +329,7 @@
               
               // [버그 수정] ROW_NUMBER() OVER(ORDER BY ... DESC) 가상 엔진 버그 수동 교정 및 컬럼 순서(맨 뒤) 배치
               if (executedData && Array.isArray(executedData)) {
-                  const rnMatch = sqlForAlasql.match(/ROW_NUMBER\(\)\s*OVER\s*\(\s*(?:PARTITION\s+BY\s+([a-zA-Z0-9_`]+)\s+)?ORDER\s+BY\s+([a-zA-Z0-9_`]+)(?:\s+(DESC|ASC))?\s*\)(?:\s*AS\s+([a-zA-Z0-9_`]+))?/i);
+                  const rnMatch = sqlForAlasql.match(/ROW_NUMBER\s*\(\)\s*OVER\s*\(\s*(?:PARTITION\s+BY\s+([a-zA-Z0-9_`]+)\s+)?ORDER\s+BY\s+([a-zA-Z0-9_`]+)(?:\s+(DESC|ASC))?\s*\)(?:\s*AS\s+([a-zA-Z0-9_`]+))?/i);
                   if (rnMatch && executedData.length > 0) {
                       const partitionCol = rnMatch[1] ? rnMatch[1].replace(/`/g, '') : null;
                       const orderCol = rnMatch[2].replace(/`/g, '');
@@ -491,7 +497,7 @@
           }
           
           if (isDataCorrect || isStringCorrect) {
-            let displayData = isDataCorrect ? finalData : currentEx.res; 
+            let displayData = currentEx.res; 
             if (showSuccessMessageInsteadOfData) {
                 displayData = [{ status: '성공', message: `테이블이 정상적으로 생성되어 데이터 마트가 저장되었습니다.` }];
             }
@@ -696,7 +702,7 @@
             title: "데이터 기본 규칙",
             grammar: "FROM & SELECT",
             subtitle: "빅쿼리의 표준 작성 형식 이해하기",
-            theory: "SQL은 데이터를 찾아낼 대상을 정하고(FROM),\n그 안에서 출력할 항목을 선택(SELECT)하는 것으로 시작합니다.\n\n[사용 방법]\nSELECT \n  컬럼명1, \n  컬럼명2 \nFROM `테이블` \n;\n\n[핵심 규칙 : 대/소문자 구분]\n빅쿼리 환경에서는 대/소문자 구분이 매우 중요합니다.\n1. 테이블명: 대/소문자를 엄격히 구분합니다. (예: Customers 와 customers 는 전혀 다른 테이블)\n2. 문자열 값: WHERE 절 등의 문자 값은 대/소문자를 엄격히 구분합니다. (예: 'Active' 와 'active' 는 다름)\n3. SQL 문법: SELECT, FROM 등의 명령어 문법은 대/소문자를 구분하지 않습니다.\n\n[기타 규칙]\n※ AS(별칭)를 사용하여 결과 화면의 이름을 예쁘게 지어줄 수 있습니다.\n※ 문자열은 반드시 작은따옴표(' ')로 감싸야 합니다.\n※ 명령문의 끝에는 세미콜론(;)을 붙여 쿼리의 종료를 알립니다.",
+            theory: "SQL은 데이터를 찾아낼 대상을 정하고(FROM),\n그 안에서 출력할 항목을 선택(SELECT)하는 것으로 시작합니다.\n\n[사용 방법]\nSELECT \n  컬럼명1, \n  컬럼명2 \nFROM `테이블` \n;\n\n[핵심 규칙 : 대/소문자 구분]\n빅쿼리 환경에서는 대/소문자 구분이 매우 중요합니다.\n1. 테이블명: 대/소문자를 엄격히 구분합니다. (예: Customers 와 customers 는 전혀 다른 테이블)\n2. 문자열 값: WHERE 절 등의 문자 값은 대/소문자를 엄격히 구분합니다. (예: 'Active' 와 'active' 는 다름)\n3. SQL 문법: SELECT, FROM 등의 명령어 문법은 대/소문자를 구분하지 않습니다.\n\n[기타 규칙]\n※ AS(별칭)를 사용하여 결과 화면의 이름을 예쁘게 지어줄 수 있습니다.\n※ 문자열은 반드시 작은따옴표(' ')로 감싸야 합니다.\n※ 명령문의 끝에는 세미콜론(;)을 붙여 쿼리를 종료를 알립니다.",
             checkpoint: "SELECT 절에서 만든 별칭(AS)은 실행 순서상 가장 나중에 생성됩니다.\n따라서 같은 줄에 있는 다른 계산식에서 그 별칭을 바로 사용할 수 없습니다.",
             targetTable: "orders",
             exampleData: { "orders": [{ entr_id: 'A1', price: 10000 }, { entr_id: 'A2', price: 20000 }] },
@@ -1007,7 +1013,7 @@
             title: "중복 제거 및 순번",
             grammar: "ROW_NUMBER()",
             subtitle: "최신 데이터 1건 선별의 기술",
-            theory: "<div class='text-slate-700 font-medium leading-relaxed'>[GROUP BY + MAX의 치명적 한계]<br/>\"각 유저별로 가장 최근에 접속한 날짜의 '기기(Device) 정보'\"를 알고 싶다면?<br/>GROUP BY로 MAX(날짜)는 구할 수 있지만, 그 날짜에 해당하는 다른 컬럼(기기 정보 등)은 함께 가져올 수 없다는 치명적인 한계가 있습니다.<br/><br/>[ROW_NUMBER() OVER() 의 마법]<br/>데이터에 조건별로 '순위표(등수)' 컬럼을 새로 만들어 원래 행의 모든 정보를 보존합니다.<br/>- PARTITION BY: 그룹화할 기준 (예: 유저별로 1등부터 매기기)<br/>- ORDER BY: 순위를 매길 기준 (예: 시간순 DESC)<br/>(예: SELECT *, ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) AS rn FROM table)<br/><br/>[순위표를 활용한 1등 데이터 필터링]<br/>생성된 순위표에서 \"1등만 가져와라\"라고 하려면 어떻게 해야 할까요?<br/>윈도우 함수는 WHERE 절에 직접 쓸 수 없기 때문에, 앞서 배운 FROM 절 서브쿼리(인라인 뷰)로 한 번 감싸준 뒤 밖에서 WHERE rn = 1 로 필터링합니다.</div><div class='mt-6 bg-purple-50 p-6 rounded-2xl border border-purple-200'><div class='font-black text-purple-700 text-lg mb-2'>참고: QUALIFY (빅쿼리 전용)</div><p class='text-slate-700 text-sm leading-relaxed break-keep mb-4'>서브쿼리로 감싸는 과정 없이, 작성하던 쿼리 맨 끝에 <code>QUALIFY</code>를 덧붙여주면 한 방에 1등만 걸러낼 수 있습니다.</p><div class='bg-white border border-purple-100 p-4 rounded-xl space-y-3'><div><div class='font-bold text-purple-600 mb-1 text-sm'>👉 사용 방법</div><p class='text-slate-600 text-sm break-keep'>작성하시던 메인 쿼리의 가장 마지막 줄에 <code>QUALIFY ROW_NUMBER() OVER(...) = 원하는_등수</code> 형태로 조건을 작성합니다.</p></div><div class='border-t border-purple-100 pt-3'><div class='font-bold text-purple-600 mb-2 text-sm'>👉 (예시) 유저별 최신 접속 로그 1건 추출</div><div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * FROM login_log QUALIFY ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) = 1;</div></div></div></div>",
+            theory: "<div class='text-slate-700 font-medium leading-relaxed'>[GROUP BY + MAX의 치명적 한계]<br/>\"각 유저별로 가장 최근에 접속한 날짜의 '기기(Device) 정보'\"를 알고 싶다면?<br/>GROUP BY로 MAX(날짜)는 구할 수 있지만, 그 날짜에 해당하는 다른 컬럼(기기 정보 등)은 함께 가져올 수 없다는 치명적인 한계가 있습니다.<br/><br/>[ROW_NUMBER() OVER() 의 마법]<br/>데이터에 조건별로 '순위표(등수)' 컬럼을 새로 만들어 원래 행의 모든 정보를 보존합니다.<br/>- PARTITION BY: 그룹화할 기준 (예: 유저별로 1등부터 매기기)<br/>- ORDER BY: 순위를 매길 기준 (예: 시간순 DESC)<br/>(예: SELECT *, ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) AS rn FROM table)<br/><br/>[순위표를 활용한 1등 데이터 필터링]<br/>생성된 순위표에서 \"1등만 가져와라\"라고 하려면 어떻게 해야 할까요?<br/>윈도우 함수는 WHERE 절에 직접 쓸 수 없기 때문에, 앞서 배운 FROM 절 서브쿼리(인라인 뷰)로 한 번 감싸준 뒤 밖에서 WHERE rn = 1 로 필터링합니다.</div><div class='mt-6 bg-purple-50 p-6 rounded-2xl border border-purple-200'><div class='font-black text-purple-700 text-lg mb-2'>참고: QUALIFY (빅쿼리 전용)</div><p class='text-slate-700 text-sm leading-relaxed break-keep mb-4'>서브쿼리로 감싸는 과정 없이, 작성하던 쿼리 맨 끝에 <code>QUALIFY</code>를 덧붙여주면 한 방에 1등만 걸러낼 수 있습니다.</p><div class='bg-white border border-purple-100 p-4 rounded-xl space-y-3'><div><div class='font-bold text-purple-600 mb-1 text-sm'>👉 사용 방법</div><p class='text-slate-600 text-sm break-keep'>작성하시던 SELECT 쿼리(FROM, WHERE 등 포함)의 가장 마지막에 <code>QUALIFY ROW_NUMBER() OVER(...) = 원하는_등수</code> 형태로 조건을 덧붙여 줍니다.</p></div><div class='border-t border-purple-100 pt-3'><div class='font-bold text-purple-600 mb-2 text-sm'>👉 (예시) 유저별 최신 접속 로그 1건 추출</div><div class='bg-slate-800 text-blue-300 p-3 rounded-lg font-mono text-sm leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner'>SELECT * FROM login_log QUALIFY ROW_NUMBER() OVER(PARTITION BY user ORDER BY time DESC) = 1;</div></div></div></div>",
             checkpoint: "PARTITION BY는 그룹을 나누지 않을 거라면 생략이 가능하지만, ORDER BY는 순번을 매기기 위해 반드시 필요합니다(생략 불가).",
             targetTable: "login_log",
             exampleData: { "login_log": [{ user: 'A', time: '10:00' }, { user: 'A', time: '12:00' }] },
@@ -1457,7 +1463,7 @@
                                 <div className="flex justify-between items-center pt-2">
                                   <button onClick={() => alert(`힌트: ${currentData.exercises[exerciseIdx].hint}`)} className="text-slate-400 hover:text-blue-600 text-sm font-black flex items-center gap-2 transition-colors uppercase"><Icon name="help-circle" size={18}/> 힌트 보기</button>
                                   {engineResult && engineResult.success && (
-                                    <button onClick={() => { if(exerciseIdx < currentData.exercises.length - 1) setExerciseIdx(exerciseIdx + 1); else if(activeStep < STEPS_DATA.length - 1) { setActiveStep(activeStep + 1); setExerciseIdx(0); setShowTheoryAnswer(false); document.getElementById('mainContentScroll').scrollTop = 0; } setUserQuery(''); setEngineResult(null); }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 문제 <Icon name="chevron-right" size={24}/></button>
+                                    <button onClick={() => { if(exerciseIdx < currentData.exercises.length - 1) setExerciseIdx(exerciseIdx + 1); else if(activeStep < STEPS_DATA.length - 1) { setActiveStep(activeStep + 1); setExerciseIdx(0); setShowTheoryAnswer(false); setTimeout(() => { const el = document.getElementById('mainContentScroll'); if(el) el.scrollTop = 0; }, 0); } setUserQuery(''); setEngineResult(null); }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 문제 <Icon name="chevron-right" size={24}/></button>
                                   )}
                                 </div>
                             </div>
@@ -1474,7 +1480,7 @@
                       <div className="space-y-2 pb-10">
                         <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">Homework</h2>
                         {PRACTICAL_DATA.map((s, i) => (
-                          <button key={i} onClick={() => { setPracStep(i); setPracQuery(''); setPracResult(null); setShowPracAnswer(false); document.getElementById('pracContentScroll').scrollTop = 0; }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${pracStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'} ${!isPracUnlocked(i) ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!isPracUnlocked(i)}>
+                          <button key={i} onClick={() => { setPracStep(i); setPracQuery(''); setPracResult(null); setShowPracAnswer(false); setTimeout(() => { const el = document.getElementById('pracContentScroll'); if(el) el.scrollTop = 0; }, 0); }} className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-3 ${pracStep === i ? 'bg-blue-600 text-white shadow-lg translate-x-1' : 'hover:bg-slate-50 text-slate-600 border border-transparent'} ${!isPracUnlocked(i) ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!isPracUnlocked(i)}>
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-none ${pracStep === i ? 'bg-white/20' : 'bg-slate-100'}`}>H{i + 1}</div>
                             <div className="overflow-hidden leading-tight"><div className="text-[11px] font-black truncate">{s.title}</div><div className="text-[9px] font-bold opacity-70 uppercase mt-1 tracking-tighter">Business Logic</div></div>
                           </button>
@@ -1501,6 +1507,7 @@
                                 <div className="bg-amber-50 p-8 rounded-3xl border-2 border-amber-100 space-y-5 shadow-sm">
                                   <h5 className="text-sm font-black text-amber-700 uppercase tracking-widest flex items-center gap-2"><Icon name="sparkles" size={18} /> 비즈니스 시나리오</h5>
                                   
+                                  {/* 미션 목표 렌더링 개선 */}
                                   {renderGoalText(currentPrac.scenario)}
 
                                   <div className="flex flex-col gap-3 pt-4 border-t border-amber-200/50 w-full">
@@ -1588,7 +1595,7 @@
                               <div className="flex justify-between items-center pt-2">
                                 <button onClick={() => alert(`힌트: ${currentPrac.hint}`)} className="text-slate-400 hover:text-blue-600 text-sm font-black flex items-center gap-2 transition-colors uppercase"><Icon name="help-circle" size={18}/> 힌트 보기</button>
                                 {pracResult && pracResult.success && (
-                                  <button onClick={() => { if(pracStep < PRACTICAL_DATA.length - 1) { setPracStep(pracStep + 1); setPracQuery(''); setPracResult(null); setShowPracAnswer(false); document.getElementById('pracContentScroll').scrollTop = 0; } }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 과제 <Icon name="chevron-right" size={24}/></button>
+                                  <button onClick={() => { if(pracStep < PRACTICAL_DATA.length - 1) { setPracStep(pracStep + 1); setPracQuery(''); setPracResult(null); setShowPracAnswer(false); setTimeout(() => { const el = document.getElementById('pracContentScroll'); if(el) el.scrollTop = 0; }, 0); } }} className="bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black hover:scale-105 transition-all shadow-xl flex items-center gap-3 text-xl">다음 과제 <Icon name="chevron-right" size={24}/></button>
                                 )}
                               </div>
                            </div>
